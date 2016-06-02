@@ -1,0 +1,5 @@
+numpy>=1.10.2
+scipy>=0.16.1
+scikit-image>=0.11.3
+git+git://github.com/nebw/saliency-localizer.git#egg=saliency_localizer>=0.0.1
+git+git://github.com/BioroboticsLab/bb_binary.git#egg=bb_binary
