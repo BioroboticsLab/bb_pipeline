@@ -68,15 +68,20 @@ class Pipeline(object):
         intermediates = set(inputs)
 
         for stage in self.pipeline:
-            inputs = set([req for req in intermediates if type(req) in stage.requires])
-            outputs = stage(inputs)
+            inputs = []
+            for req in stage.requires:
+                # TODO: maybe use map here instead
+                for intermediate in intermediates:
+                    if type(intermediate) == req:
+                        inputs.append(intermediate)
+            outputs = stage(*inputs)
             intermediates = intermediates.union(intermediates, outputs)
 
-        outputs = set()
+        outputs = []
         for output in self.outputs:
             for intermediate in intermediates:
                 if type(intermediate) == output:
-                    outputs.add(intermediate)
+                    outputs.append(intermediate)
 
         assert(len(outputs) == len(self.outputs))
         return outputs
