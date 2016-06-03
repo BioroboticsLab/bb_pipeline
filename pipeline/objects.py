@@ -1,6 +1,3 @@
-#!/usr/bin/python3
-
-
 class PipelineObject(object):
     pass
 
@@ -25,20 +22,20 @@ class Timestamp(PipelineObject):
         self.timestamp = timestamp
 
 
-''' Downsampled and preprocessed '''
 class LocalizerInputImage(PipelineObject):
+    ''' Downsampled and preprocessed '''
     def __init__(self, image):
         self.image = image
 
 
-''' Image patches of candidates (original image size) '''
 class Regions(PipelineObject):
+    ''' Image patches of candidates (original image size) '''
     def __init__(self, regions):
         self.regions = regions
 
 
-''' Saliency image (downsampled image coordinates) '''
 class SaliencyImage(PipelineObject):
+    ''' Saliency image (downsampled image coordinates) '''
     def __init__(self, image):
         self.image = image
 
@@ -48,32 +45,32 @@ class Saliencies(PipelineObject):
         self.saliencies = saliencies
 
 
-''' Center positions of localized tags (original image coordinates) '''
 class Candidates(PipelineObject):
+    ''' Center positions of localized tags (original image coordinates) '''
     def __init__(self, candidates):
         self.candidates = candidates
 
 
-''' Blurred image patches for Decoder '''
 class DecoderRegions(PipelineObject):
+    ''' Blurred image patches for Decoder '''
     def __init__(self, regions):
         self.regions = regions
 
 
-''' Output of Autoencoder for each Candidate '''
 class Descriptors(PipelineObject):
+    ''' Output of Autoencoder for each Candidate '''
     def __init__(self, descriptors):
         self.descriptors = descriptors
 
 
-''' Final tag center coordinates (corrected by Decoder) '''
 class Positions(PipelineObject):
+    ''' Final tag center coordinates (corrected by Decoder) '''
     def __init__(self, positions):
         self.positions = positions
 
 
-''' Final tag center in hive coordinate system '''
 class HivePositions(PipelineObject):
+    ''' Final tag center in hive coordinate system '''
     def __init__(self, positions):
         self.positions = positions
 
