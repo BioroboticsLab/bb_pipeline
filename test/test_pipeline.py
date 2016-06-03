@@ -44,17 +44,21 @@ def test_imagereader():
     assert(len(outputs) == 3)
 
     expected_outputs = [Image, Timestamp, CameraIndex]
-    _assert_types(outputs, expected_outputs)
+    _assert_types([outputs[Image], outputs[Timestamp], outputs[CameraIndex]], expected_outputs)
 
-    assert(outputs[0].image.shape == (3000, 4000))
-    assert(outputs[1].timestamp.year == 2015)
-    assert(outputs[1].timestamp.month == 8)
-    assert(outputs[1].timestamp.day == 21)
-    assert(outputs[1].timestamp.hour == 16)
-    assert(outputs[1].timestamp.minute == 15)
-    assert(outputs[1].timestamp.second == 30)
-    assert(outputs[1].timestamp.microsecond == 884267)
-    assert(outputs[2].idx == 2)
+    im = outputs[Image]
+    ts = outputs[Timestamp]
+    idx = outputs[CameraIndex]
+
+    assert(im.image.shape == (3000, 4000))
+    assert(ts.timestamp.year == 2015)
+    assert(ts.timestamp.month == 8)
+    assert(ts.timestamp.day == 21)
+    assert(ts.timestamp.hour == 16)
+    assert(ts.timestamp.minute == 15)
+    assert(ts.timestamp.second == 30)
+    assert(ts.timestamp.microsecond == 884267)
+    assert(idx.idx == 2)
 
 
 def test_localizer():
@@ -70,12 +74,12 @@ def test_localizer():
     outputs = pipeline([Filename(fname)])
 
     expected_outputs = [Regions, Candidates]
-    _assert_types(outputs, expected_outputs)
+    _assert_types([outputs[Regions], outputs[Candidates]], expected_outputs)
 
-    regions = outputs[0]
+    regions = outputs[Regions]
     assert(len(regions.regions) > 0)
 
-    candidates = outputs[1]
+    candidates = outputs[Candidates]
     assert(len(regions.regions) == len(candidates.candidates))
 
     for candidate in candidates.candidates:
@@ -98,10 +102,10 @@ def test_decoder():
     outputs = pipeline([Filename(fname)])
 
     expected_outputs = [Candidates, IDs]
-    _assert_types(outputs, expected_outputs)
+    _assert_types([outputs[Candidates], outputs[IDs]], expected_outputs)
 
-    candidates = outputs[0]
-    ids = outputs[1]
+    candidates = outputs[Candidates]
+    ids = outputs[IDs]
 
     assert(len(ids.ids) == len(candidates.candidates))
 

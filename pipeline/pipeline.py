@@ -77,11 +77,11 @@ class Pipeline(object):
             outputs = stage(*inputs)
             intermediates = intermediates.union(intermediates, outputs)
 
-        outputs = []
+        outputs = {}
         for output in self.outputs:
             for intermediate in intermediates:
                 if type(intermediate) == output:
-                    outputs.append(intermediate)
+                    outputs[type(intermediate)] = intermediate
 
         assert(len(outputs) == len(self.outputs))
         return outputs
