@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from pipeline.stage import Stages
+from pipeline.stages import Stages
 
 
 class Pipeline(object):

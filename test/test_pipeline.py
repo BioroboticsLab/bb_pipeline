@@ -3,8 +3,8 @@
 import os
 
 from pipeline import Pipeline
-from pipeline.object import *
-from pipeline.stage import *
+from pipeline.objects import *
+from pipeline.stages import *
 
 
 def test_empty_pipeline():

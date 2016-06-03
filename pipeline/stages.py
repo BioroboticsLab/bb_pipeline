@@ -14,6 +14,8 @@ stderr = sys.stderr
 sys.stderr = open('/dev/null', 'w')
 import localizer
 import localizer.util
+import localizer.config
+from localizer.visualization import get_roi_overlay
 from localizer.localizer import Localizer as LocalizerAPI
 from keras.models import model_from_json
 sys.stderr = stderr
@@ -21,7 +23,7 @@ sys.stderr = stderr
 from bb_binary import parse_image_fname
 
 from pipeline import config
-from pipeline.object import *
+from pipeline.objects import *
 
 
 class PipelineStage(object):
@@ -67,7 +69,8 @@ class Localizer(PipelineStage):
         self.localizer.compile()
 
     def __call__(self, input):
-        results = self.localizer.detect_tags(input.image)
+        results = self.localizer.detect_tags(input.image,
+                                             saliency_threshold=config.saliency_threshold)
         saliencies, candidates, rois, saliency_image = results
 
         # TODO: investigate source of offset
@@ -135,8 +138,13 @@ class TagSimilarityEncoder(PipelineStage):
 
 
 class LocalizerVisualizer(PipelineStage):
-    requires = [Image, Regions]
+    requires = [Image, Candidates]
     provides = [CandidateOverlay]
+
+    def __call__(self, image, candidates):
+        overlay = get_roi_overlay(candidates.candidates, image.image / 255.)
+
+        return [CandidateOverlay(overlay)]
 
 
 class ResultVisualizer(PipelineStage):
