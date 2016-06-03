@@ -31,13 +31,13 @@ class LocalizerInputImage(PipelineObject):
         self.image = image
 
 
-''' List of ROIs in original image coordinates '''
+''' Image patches of candidates (original image size) '''
 class Regions(PipelineObject):
-    def __init__(self, region):
-        self.region = region
+    def __init__(self, regions):
+        self.regions = regions
 
 
-''' Upsampled saliency (original image coordinates) '''
+''' Saliency image (downsampled image coordinates) '''
 class SaliencyImage(PipelineObject):
     def __init__(self, image):
         self.image = image
@@ -48,10 +48,16 @@ class Saliencies(PipelineObject):
         self.saliencies = saliencies
 
 
-''' Image patches of candidates (original image size) '''
+''' Center positions of localized tags (original image coordinates) '''
 class Candidates(PipelineObject):
     def __init__(self, candidates):
         self.candidates = candidates
+
+
+''' Blurred image patches for Decoder '''
+class DecoderRegions(PipelineObject):
+    def __init__(self, regions):
+        self.regions = regions
 
 
 ''' Output of Autoencoder for each Candidate '''

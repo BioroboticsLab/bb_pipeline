@@ -1,1 +1,1 @@
-from pipeline.Pipeline import Pipeline
+from pipeline.pipeline import Pipeline
