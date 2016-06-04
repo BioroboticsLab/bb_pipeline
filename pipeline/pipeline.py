@@ -1,38 +1,36 @@
-#!/usr/bin/python3
 
 from pipeline.stages import Stages
-
+import inspect
+from inspect import Parameter
 
 class Pipeline(object):
-    def __init__(self, inputs, outputs):
+    def __init__(self, inputs, outputs, **config):
         self.inputs = inputs
         self.outputs = outputs
+        self.config = config
+        self.required_stages = self._required_stages()
+        if config.get('print_config', False):
+            self._print_config()
+        self.stages = [self._instantiate_stage(s) for s in self.required_stages]
+        self.pipeline = self._build_pipeline(self.stages)
 
-        stages = self._instanciate_required_stages()
-        self.pipeline = self._build_pipeline(stages)
-
-    def _instanciate_required_stages(self):
-        stage_instances = set()
+    def _required_stages(self):
         added_stages = set()
         requirements = set(self.outputs)
-
         while len(requirements) > 0:
             req = requirements.pop()
-
             if req in self.inputs:
                 continue
 
             req_fulfilled = False
             for stage in Stages:
                 if req in stage.provides:
-                    stage_instance = stage()
 
                     for stage_req in stage.requires:
                         requirements.add(stage_req)
 
                     if stage not in added_stages:
                         added_stages.add(stage)
-                        stage_instances.add(stage_instance)
 
                     req_fulfilled = True
 
@@ -40,8 +38,70 @@ class Pipeline(object):
 
             if not req_fulfilled:
                 raise RuntimeError('Unable to fulfill requirement {}'.format(req))
+        return added_stages
 
-        return stage_instances
+    @staticmethod
+    def _get_config_parameter_line(name, param, default_pos=30):
+        def get_annotation_as_str(param):
+            if param.annotation != Parameter.empty:
+                anno = param.annotation
+                if type(anno) == str:
+                    anno_str = anno
+                elif hasattr(anno, '__name__'):
+                    anno_str = anno.__name__
+                else:
+                    anno_str = str(anno)
+                return " ({})".format(anno_str)
+            else:
+                return ""
+        ss_line = "    {}{}:".format(name, get_annotation_as_str(param))
+
+        ss_line += " " * (default_pos - len(ss_line))
+        if param.default != Parameter.empty:
+            ss_line += "     {}".format(param.default)
+        return ss_line
+
+    def _print_config(self):
+        required_config = []
+        for stage in self.required_stages:
+            ss = "{}:\n".format(stage.__name__)
+            sig = inspect.signature(stage)
+            has_params = False
+
+            for name, param in sig.parameters.items():
+                if name in ['self', 'config']:
+                    continue
+                has_params = True
+                if param.default == Parameter.empty:
+                    required_config.append((name, param))
+                ss += self._get_config_parameter_line(name, param) + "\n"
+
+            if has_params:
+                print(ss)
+        if required_config:
+            print("Required:")
+            for name, param in required_config:
+                print(self._get_config_parameter_line(name, param))
+
+    def _instantiate_stage(self, stage):
+        try:
+            return stage(**self.config)
+        except TypeError as e:
+            sig = inspect.signature(stage)
+            missing_configs = []
+            for name, param in sig.parameters.items():
+                if name in ['self', 'config']:
+                    continue
+                if (param.default == Parameter.empty and
+                        name not in self.config):
+                    missing_configs.append(name)
+
+            assert missing_configs
+            missing_strs = [self._get_config_parameter_line(
+                name, sig.parameters[name]) for name in missing_configs]
+            raise KeyError(
+                "In stage {} following config is missing:\n"
+                .format(stage.__name__) + "\n".join(missing_strs))
 
     def _build_pipeline(self, stages):
         pipeline = []

@@ -10,25 +10,31 @@ from skimage.io import imread
 from scipy.ndimage.filters import gaussian_filter1d
 
 # TODO: don't print keras import messages
-stderr = sys.stderr
-sys.stderr = open('/dev/null', 'w')
+stderr = sys.stderr                     # noqa
+sys.stderr = open('/dev/null', 'w')     # noqa
+
 import localizer
 import localizer.util
 import localizer.config
 from localizer.visualization import get_roi_overlay
 from localizer.localizer import Localizer as LocalizerAPI
 from keras.models import model_from_json
-sys.stderr = stderr
+sys.stderr = stderr                     # noqa
 
 from bb_binary import parse_image_fname
 
-from pipeline import config
-from pipeline.objects import *
+from pipeline.objects import DecoderRegions, Filename, Image, Timestamp, \
+    CameraIndex, Positions, HivePositions, Orientations, IDs, Saliencies, \
+    PipelineResult, Candidates, CandidateOverlay, FinalResultOverlay, \
+    Regions, Descriptors, LocalizerInputImage, SaliencyImage
 
 
 class PipelineStage(object):
     requires = []
     provides = []
+
+    def __init__(self, **config):
+        pass
 
 
 class ImageReader(PipelineStage):
@@ -46,13 +52,9 @@ class LocalizerPreprocessor(PipelineStage):
     requires = [Image]
     provides = [LocalizerInputImage]
 
-    def __init__(self):
-        # TODO: add some kind of config module
-        clip_limit = 2
-        tag_width = 64
-        tag_heigth = 64
-
-        self.clahe = createCLAHE(clip_limit, (tag_width, tag_heigth))
+    def __init__(self, clahe_clip_limit=2, tag_width=64, tag_heigth=64,
+                 **config):
+        self.clahe = createCLAHE(clahe_clip_limit, (tag_width, tag_heigth))
 
     def __call__(self, image):
         return [LocalizerInputImage(self.clahe.apply(image.image))]
@@ -62,15 +64,18 @@ class Localizer(PipelineStage):
     requires = [LocalizerInputImage]
     provides = [Regions, SaliencyImage, Saliencies, Candidates]
 
-    def __init__(self):
+    def __init__(self, saliency_model_path: str,
+                 saliency_threshold=0.5,
+                 **config):
+        self.saliency_threshold = saliency_threshold
         self.localizer = LocalizerAPI()
         self.localizer.logger.setLevel(logging.WARNING)
-        self.localizer.load_weights(config.saliency_model_path)
+        self.localizer.load_weights(saliency_model_path)
         self.localizer.compile()
 
     def __call__(self, input):
-        results = self.localizer.detect_tags(input.image,
-                                             saliency_threshold=config.saliency_threshold)
+        results = self.localizer.detect_tags(
+            input.image, saliency_threshold=self.saliency_threshold)
         saliencies, candidates, rois, saliency_image = results
 
         # TODO: investigate source of offset
@@ -101,9 +106,9 @@ class Decoder(PipelineStage):
     requires = [DecoderRegions, Candidates]
     provides = [Positions, Orientations, IDs]
 
-    def __init__(self):
-        self.model = model_from_json(open(config.decoder_model_path).read())
-        self.model.load_weights(config.decoder_weigths_path)
+    def __init__(self, decoder_model_path, decoder_weigths_path, **config):
+        self.model = model_from_json(open(decoder_model_path).read())
+        self.model.load_weights(decoder_weigths_path)
         # We can't use model.compile because it requires an optimizer and a loss function.
         # Since we only use the model for inference, we call the private function
         # _make_predict_function(). This is exactly what keras would do otherwise the first

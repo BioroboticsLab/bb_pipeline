@@ -1,10 +1,47 @@
-#!/usr/bin/python3
-
 import os
+import pytest
+import time
+
+from scipy.misc import imread
+import numpy as np
 
 from pipeline import Pipeline
-from pipeline.objects import *
-from pipeline.stages import *
+from pipeline.pipeline import GeneratorProcessor, BBBinaryRepoSink
+from pipeline.stages import Localizer, PipelineStage, ImageReader, \
+    LocalizerPreprocessor, TagSimilarityEncoder, Decoder, DecoderPreprocessor
+
+from pipeline.objects import DecoderRegions, Filename, Image, Timestamp, \
+    CameraIndex, Positions, HivePositions, Orientations, IDs, Saliencies, \
+    PipelineResult, Candidates, CandidateOverlay, FinalResultOverlay, \
+    Regions, Descriptors, LocalizerInputImage, SaliencyImage
+
+from bb_binary import Repository
+
+
+def get_test_fname(name):
+    test_dir = os.path.dirname(__file__)
+    return os.path.join(test_dir, name)
+
+
+@pytest.fixture
+def bees_image():
+    return get_test_fname('data/Cam_2_20150821161530_884267.jpeg')
+
+
+@pytest.fixture
+def config():
+    saliency_weights = get_test_fname('models/localizer/')
+    decoder_weights = get_test_fname('models/decoder/decoder_weights.hdf5')
+    decoder_model = get_test_fname('models/decoder/decoder_architecture.hdf5')
+    for fname in (saliency_weights, decoder_model, decoder_weights):
+        assert os.path.exists(fname), \
+            "Not found {}. Did you forgot to run `./get_test_models.sh`?".format(fname)
+
+    return {
+        'saliency_model_path': saliency_weights,
+        'decoder_model_path': decoder_model,
+        'decoder_weigths_path': decoder_weights,
+    }
 
 
 def test_empty_pipeline():
@@ -12,8 +49,8 @@ def test_empty_pipeline():
     assert(len(pipeline.pipeline) == 0)
 
 
-def test_stages_are_instantiated():
-    pipeline = Pipeline([Image], [LocalizerInputImage])
+def test_stages_are_instantiated(config):
+    pipeline = Pipeline([Image], [LocalizerInputImage], **config)
     assert(all([issubclass(type(stage), PipelineStage) for stage in pipeline.pipeline]))
 
 
@@ -22,8 +59,8 @@ def _assert_types(actual, expected):
         assert(type(actual_type) == expected_type)
 
 
-def test_simple_pipeline():
-    pipeline = Pipeline([Filename], [SaliencyImage, Descriptors])
+def test_simple_pipeline(config):
+    pipeline = Pipeline([Filename], [SaliencyImage, Descriptors], **config)
 
     expected_stages = [ImageReader,
                        LocalizerPreprocessor,
@@ -32,15 +69,15 @@ def test_simple_pipeline():
     _assert_types(pipeline.pipeline, expected_stages)
 
 
-def test_imagereader():
-    pipeline = Pipeline([Filename], [Image, Timestamp, CameraIndex])
+
+
+def test_imagereader(bees_image, config):
+    pipeline = Pipeline([Filename], [Image, Timestamp, CameraIndex], **config)
 
     expected_stages = [ImageReader]
     _assert_types(pipeline.pipeline, expected_stages)
 
-    fname = os.path.dirname(__file__) + '/data/Cam_2_20150821161530_884267.jpeg'
-
-    outputs = pipeline([Filename(fname)])
+    outputs = pipeline([Filename(bees_image)])
     assert(len(outputs) == 3)
 
     expected_outputs = [Image, Timestamp, CameraIndex]
@@ -61,8 +98,8 @@ def test_imagereader():
     assert(idx.idx == 2)
 
 
-def test_localizer():
-    pipeline = Pipeline([Filename], [Regions, Candidates])
+def test_localizer(config):
+    pipeline = Pipeline([Filename], [Regions, Candidates], **config)
 
     expected_stages = [ImageReader,
                        LocalizerPreprocessor,
@@ -87,8 +124,8 @@ def test_localizer():
         assert(candidate[1] >= 0 and candidate[1] < 4000)
 
 
-def test_decoder():
-    pipeline = Pipeline([Filename], [Candidates, IDs])
+def test_decoder(config):
+    pipeline = Pipeline([Filename], [Candidates, IDs], **config)
 
     expected_stages = [ImageReader,
                        LocalizerPreprocessor,
