@@ -2,6 +2,7 @@ import os
 import pytest
 import time
 import datetime
+import pytz
 
 from scipy.misc import imread
 import numpy as np
@@ -86,7 +87,9 @@ def test_imagereader(bees_image, config):
     idx = outputs[CameraIndex]
 
     print(ts.timestamp)
-    dt = datetime.datetime.fromtimestamp(ts.timestamp)
+    tz = pytz.timezone('Europe/Berlin')
+    dt = datetime.datetime.fromtimestamp(ts.timestamp, tz=pytz.utc)
+    dt = dt.astimezone(tz)
     assert(im.image.shape == (3000, 4000))
     assert(dt.year == 2015)
     assert(dt.month == 8)
