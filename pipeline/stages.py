@@ -93,11 +93,10 @@ class DecoderPreprocessor(PipelineStage):
     provides = [DecoderRegions]
 
     def __call__(self, image, candidates):
-        image_blurred = gaussian_filter1d(
-            gaussian_filter1d(image.image, 2/3, axis=-1), 2 / 3, axis=-2)
-
-        rois, mask = localizer.util.extract_rois(candidates.candidates, image_blurred)
-
+        rois, mask = localizer.util.extract_rois(candidates.candidates,
+                                                 image.image)
+        rois = gaussian_filter1d(
+            gaussian_filter1d(rois, 2/3, axis=-1), 2 / 3, axis=-2)
         # TODO: add localizer/decoder roi size difference to config
         return [DecoderRegions((rois[:, :, 18:-18, 18:-18] / 255.) * 2 - 1)]
 
