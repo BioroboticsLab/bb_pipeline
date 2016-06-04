@@ -11,6 +11,8 @@ class Pipeline(object):
         self.required_stages = self._required_stages()
         if config.get('print_config', False):
             self._print_config()
+        if config.get('print_config_dict', False):
+            print(self._config_dict())
         self.stages = [self._instantiate_stage(s) for s in self.required_stages]
         self.pipeline = self._build_pipeline(self.stages)
 
@@ -82,6 +84,35 @@ class Pipeline(object):
             print("Required:")
             for name, param in required_config:
                 print(self._get_config_parameter_line(name, param))
+
+    def _config_dict(self):
+        def get_default(param):
+            if param.default == Parameter.empty:
+                return "'REQUIRED'"
+            else:
+                value = param.default
+                if type(value) == str:
+                    return "'{}'".format(value)
+                else:
+                    return str(value)
+
+        required_config = []
+        s = "{\n"
+        for stage in self.required_stages:
+            ss = "    # {}\n".format(stage.__name__)
+            sig = inspect.signature(stage)
+            has_params = False
+            for name, param in sig.parameters.items():
+                if name in ['self', 'config']:
+                    continue
+                has_params = True
+                if param.default == Parameter.empty:
+                    required_config.append((name, param))
+                ss += "    '{}': {},\n".format(name, get_default(param))
+            if has_params:
+                s += ss
+        s += "}"
+        return s
 
     def _instantiate_stage(self, stage):
         try:
