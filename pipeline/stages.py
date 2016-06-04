@@ -44,7 +44,7 @@ class ImageReader(PipelineStage):
     def __call__(self, fname):
         assert(isfile(fname.fname))
         image = imread(fname.fname)
-        camIdx, dt = parse_image_fname(fname.fname)
+        camIdx, dt = parse_image_fname(fname.fname, 'readable')
         return [Image(image), Timestamp(dt), CameraIndex(camIdx)]
 
 

@@ -1,6 +1,7 @@
 import os
 import pytest
 import time
+import datetime
 
 from scipy.misc import imread
 import numpy as np
@@ -69,8 +70,6 @@ def test_simple_pipeline(config):
     _assert_types(pipeline.pipeline, expected_stages)
 
 
-
-
 def test_imagereader(bees_image, config):
     pipeline = Pipeline([Filename], [Image, Timestamp, CameraIndex], **config)
 
@@ -87,14 +86,16 @@ def test_imagereader(bees_image, config):
     ts = outputs[Timestamp]
     idx = outputs[CameraIndex]
 
+    print(ts.timestamp)
+    dt = datetime.datetime.fromtimestamp(ts.timestamp)
     assert(im.image.shape == (3000, 4000))
-    assert(ts.timestamp.year == 2015)
-    assert(ts.timestamp.month == 8)
-    assert(ts.timestamp.day == 21)
-    assert(ts.timestamp.hour == 16)
-    assert(ts.timestamp.minute == 15)
-    assert(ts.timestamp.second == 30)
-    assert(ts.timestamp.microsecond == 884267)
+    assert(dt.year == 2015)
+    assert(dt.month == 8)
+    assert(dt.day == 21)
+    assert(dt.hour == 16)
+    assert(dt.minute == 15)
+    assert(dt.second == 30)
+    assert(dt.microsecond == 884267)
     assert(idx.idx == 2)
 
 
