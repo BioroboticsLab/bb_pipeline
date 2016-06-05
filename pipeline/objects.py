@@ -86,8 +86,12 @@ class IDs(PipelineObject):
 
 
 class PipelineResult(PipelineObject):
-    def __init__(self, result):
-        self.result = result
+    def __init__(self, positions, hive_positions, orientations, ids, saliencies):
+        self.positions = positions
+        self.hive_positions = hive_positions
+        self.orientations = orientations
+        self.ids = ids
+        self.saliencies = saliencies
 
 
 class CandidateOverlay(PipelineObject):

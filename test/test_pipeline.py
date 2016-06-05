@@ -8,6 +8,7 @@ from scipy.misc import imread
 import numpy as np
 
 from pipeline import Pipeline
+from pipeline.pipeline import GeneratorProcessor, BBBinaryRepoSink
 from pipeline.stages import Localizer, PipelineStage, ImageReader, \
     LocalizerPreprocessor, TagSimilarityEncoder, Decoder, DecoderPreprocessor
 
@@ -16,7 +17,7 @@ from pipeline.objects import DecoderRegions, Filename, Image, Timestamp, \
     PipelineResult, Candidates, CandidateOverlay, FinalResultOverlay, \
     Regions, Descriptors, LocalizerInputImage, SaliencyImage
 
-from bb_binary import Repository
+from bb_binary import Repository, DataSource, FrameContainer
 
 
 def get_test_fname(name):
@@ -86,7 +87,6 @@ def test_imagereader(bees_image, config):
     ts = outputs[Timestamp]
     idx = outputs[CameraIndex]
 
-    print(ts.timestamp)
     tz = pytz.timezone('Europe/Berlin')
     dt = datetime.datetime.fromtimestamp(ts.timestamp, tz=pytz.utc)
     dt = dt.astimezone(tz)
@@ -169,3 +169,32 @@ def test_print_config_dict(config):
     assert 'tag_width' in config_dict
     assert 'clahe_clip_limit' in config_dict
     assert 'saliency_threshold' in config_dict
+
+
+def test_generator_processor(tmpdir, bees_image, config):
+    def image_generator():
+        ts = time.time()
+        data_source = DataSource.new_message(
+            filename='bees.jpeg', cam={'camId': 0})
+        for i in range(2):
+            img = imread(bees_image)
+            yield data_source, Image(img), Timestamp(ts + i)
+
+    repo = Repository(str(tmpdir))
+    pipeline = Pipeline([Image, Timestamp], [PipelineResult], **config)
+    gen_processor = GeneratorProcessor(
+        pipeline, lambda: BBBinaryRepoSink(repo))
+
+    gen_processor(image_generator())
+    gen_processor(image_generator())
+    fnames = list(repo.iter_fnames())
+    assert len(fnames) == 2
+
+    last_ts = 0
+    for fname in repo.iter_fnames():
+        print("{}: {}".format(fname, os.path.getsize(fname)))
+        with open(fname, 'rb') as f:
+            fc = FrameContainer.read(f)
+        assert fc.dataSources[0].filename == 'bees.jpeg'
+        assert last_ts < fc.fromTimestamp
+        last_ts = fc.fromTimestamp

@@ -119,7 +119,7 @@ class Decoder(PipelineStage):
 
         # TODO
         positions = candidates.candidates
-        orientations = None
+        orientations = np.zeros((len(positions), 3))
 
         return [Positions(positions),
                 Orientations(orientations),
@@ -130,10 +130,22 @@ class CoordinateMapper(PipelineStage):
     requires = [Positions]
     provides = [HivePositions]
 
+    def __call__(self, pos):
+        return HivePositions(pos.positions)
+
 
 class ResultMerger(PipelineStage):
     requires = [Positions, HivePositions, Orientations, IDs, Saliencies]
     provides = [PipelineResult]
+
+    def __call__(self, positions, hive_positions, orientations, ids, saliencies):
+        return PipelineResult(
+            positions,
+            hive_positions,
+            orientations,
+            ids,
+            saliencies
+        )
 
 
 class TagSimilarityEncoder(PipelineStage):
