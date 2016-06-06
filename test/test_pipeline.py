@@ -176,8 +176,7 @@ def test_print_config_dict(config):
 def test_generator_processor(tmpdir, bees_image, config):
     def image_generator():
         ts = time.time()
-        data_source = DataSource.new_message(
-            filename='bees.jpeg', cam={'camId': 0})
+        data_source = DataSource.new_message(filename='bees.jpeg')
         for i in range(2):
             img = imread(bees_image)
             yield data_source, img, ts + i

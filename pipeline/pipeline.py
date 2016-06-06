@@ -4,7 +4,7 @@ import pipeline.stages
 from bb_binary import build_frame_container
 import inspect
 from inspect import Parameter
-from bb_binary import Cam, DataSource, FrameContainer, build_frame
+from bb_binary import DataSource, FrameContainer, build_frame
 
 
 class Sink:
@@ -49,11 +49,11 @@ class BBBinaryRepoSink(Sink):
         frames = fc.init('frames', len(self.frames))
         for i, (data_source_idx, detection, timestamp) in enumerate(self.frames):
             frame = frames[i]
-            frame.dataSource = data_source_idx
+            frame.dataSourceIdx = data_source_idx
             detections_builder = frame.detectionsUnion.init(
                 'detectionsDP', len(detection.positions))
             for i, db in enumerate(detections_builder):
-                db.tagIdx = i
+                db.idx = i
                 db.xpos = int(detection.positions[i, 0])
                 db.ypos = int(detection.positions[i, 1])
                 db.xposHive = int(detection.hive_positions[i, 0])
