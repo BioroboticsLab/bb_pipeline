@@ -77,20 +77,21 @@ def test_imagereader(bees_image, config):
     expected_stages = [ImageReader]
     _assert_types(pipeline.pipeline, expected_stages)
 
-    outputs = pipeline([Filename(bees_image)])
+    outputs = pipeline([bees_image])
     assert(len(outputs) == 3)
 
-    expected_outputs = [Image, Timestamp, CameraIndex]
-    _assert_types([outputs[Image], outputs[Timestamp], outputs[CameraIndex]], expected_outputs)
+    assert Image in outputs
+    assert Timestamp in outputs
+    assert CameraIndex in outputs
 
     im = outputs[Image]
     ts = outputs[Timestamp]
     idx = outputs[CameraIndex]
 
     tz = pytz.timezone('Europe/Berlin')
-    dt = datetime.datetime.fromtimestamp(ts.timestamp, tz=pytz.utc)
+    dt = datetime.datetime.fromtimestamp(ts, tz=pytz.utc)
     dt = dt.astimezone(tz)
-    assert(im.image.shape == (3000, 4000))
+    assert(im.shape == (3000, 4000))
     assert(dt.year == 2015)
     assert(dt.month == 8)
     assert(dt.day == 21)
@@ -98,7 +99,7 @@ def test_imagereader(bees_image, config):
     assert(dt.minute == 15)
     assert(dt.second == 30)
     assert(dt.microsecond == 884267)
-    assert(idx.idx == 2)
+    assert(idx == 2)
 
 
 def test_localizer(config):
@@ -111,18 +112,19 @@ def test_localizer(config):
 
     fname = os.path.dirname(__file__) + '/data/Cam_2_20150821161530_884267.jpeg'
 
-    outputs = pipeline([Filename(fname)])
+    outputs = pipeline([fname])
 
-    expected_outputs = [Regions, Candidates]
-    _assert_types([outputs[Regions], outputs[Candidates]], expected_outputs)
+    assert len(outputs) == 2
+    assert Regions in outputs
+    assert Candidates in outputs
 
     regions = outputs[Regions]
-    assert(len(regions.regions) > 0)
+    assert(len(regions) > 0)
 
     candidates = outputs[Candidates]
-    assert(len(regions.regions) == len(candidates.candidates))
+    assert(len(regions) == len(candidates))
 
-    for candidate in candidates.candidates:
+    for candidate in candidates:
         assert(candidate[0] >= 0 and candidate[0] < 3000)
         assert(candidate[1] >= 0 and candidate[1] < 4000)
 
@@ -139,18 +141,18 @@ def test_decoder(config):
 
     fname = os.path.dirname(__file__) + '/data/Cam_2_20150821161530_884267.jpeg'
 
-    outputs = pipeline([Filename(fname)])
+    outputs = pipeline([fname])
 
-    expected_outputs = [Candidates, IDs]
-    _assert_types([outputs[Candidates], outputs[IDs]], expected_outputs)
+    assert len(outputs) == 2
+    assert IDs in outputs
+    assert Candidates in outputs
 
     candidates = outputs[Candidates]
     ids = outputs[IDs]
 
-    assert(len(ids.ids) == len(candidates.candidates))
+    assert(len(ids) == len(candidates))
 
-    print()
-    for pos, id in zip(candidates.candidates, ids.ids):
+    for pos, id in zip(candidates, ids):
         pos = np.round(pos).astype(np.int)
         id = ''.join([str(int(b)) for b in (np.round(id))])
         print('Detection at ({}, {}) \t ID: {}'.format(pos[0], pos[1], id))
@@ -178,7 +180,7 @@ def test_generator_processor(tmpdir, bees_image, config):
             filename='bees.jpeg', cam={'camId': 0})
         for i in range(2):
             img = imread(bees_image)
-            yield data_source, Image(img), Timestamp(ts + i)
+            yield data_source, img, ts + i
 
     repo = Repository(str(tmpdir))
     pipeline = Pipeline([Image, Timestamp], [PipelineResult], **config)

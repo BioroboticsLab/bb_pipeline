@@ -1,6 +1,6 @@
 
 from pipeline.objects import Filename, PipelineResult
-from pipeline.stages import Stages
+import pipeline.stages
 from bb_binary import build_frame_container
 import inspect
 from inspect import Parameter
@@ -51,20 +51,20 @@ class BBBinaryRepoSink(Sink):
             frame = frames[i]
             frame.dataSource = data_source_idx
             detections_builder = frame.detectionsUnion.init(
-                'detectionsDP', len(detection.positions.positions))
+                'detectionsDP', len(detection.positions))
             for i, db in enumerate(detections_builder):
                 db.tagIdx = i
-                db.xpos = int(detection.positions.positions[i, 0])
-                db.ypos = int(detection.positions.positions[i, 1])
-                db.xposHive = int(detection.hive_positions.positions[i, 0])
-                db.yposHive = int(detection.hive_positions.positions[i, 1])
-                db.zRotation = float(detection.orientations.orientations[i, 0])
-                db.yRotation = float(detection.orientations.orientations[i, 1])
-                db.xRotation = float(detection.orientations.orientations[i, 2])
-                db.localizerSaliency = float(detection.saliencies.saliencies[i, 0])
+                db.xpos = int(detection.positions[i, 0])
+                db.ypos = int(detection.positions[i, 1])
+                db.xposHive = int(detection.hive_positions[i, 0])
+                db.yposHive = int(detection.hive_positions[i, 1])
+                db.zRotation = float(detection.orientations[i, 0])
+                db.yRotation = float(detection.orientations[i, 1])
+                db.xRotation = float(detection.orientations[i, 2])
+                db.localizerSaliency = float(detection.saliencies[i, 0])
                 db.radius = float(0)
-                decodedId = db.init('decodedId', len(detection.ids.ids[i]))
-                for j, bit in enumerate(detection.ids.ids[i]):
+                decodedId = db.init('decodedId', len(detection.ids[i]))
+                for j, bit in enumerate(detection.ids[i]):
                     decodedId[j] = int(round(255*bit))
         self.repo.add(fc)
 
@@ -78,15 +78,18 @@ class GeneratorProcessor(object):
         sink = self.sink_factory()
         for (data_source, img, ts) in generator:
             results = self.pipeline([img, ts])
-            sink.add_frame(data_source, results, ts.timestamp)
+            sink.add_frame(data_source, results, ts)
         sink.finish()
 
 
 class Pipeline(object):
-    def __init__(self, inputs, outputs, **config):
+    def __init__(self, inputs, outputs,
+                 available_stages=pipeline.stages.Stages,
+                 **config):
         self.inputs = inputs
         self.outputs = outputs
         self.config = config
+        self.available_stages = available_stages
         self.required_stages = self._required_stages()
         if config.get('print_config', False):
             self._print_config()
@@ -104,7 +107,7 @@ class Pipeline(object):
                 continue
 
             req_fulfilled = False
-            for stage in Stages:
+            for stage in self.available_stages:
                 if req in stage.provides:
 
                     for stage_req in stage.requires:
@@ -235,25 +238,24 @@ class Pipeline(object):
                     raise RuntimeError('Unable to construct pipeline')
 
     def __call__(self, inputs):
-        intermediates = set(inputs)
+        intermediates = dict(zip(self.inputs, inputs))
 
         for stage in self.pipeline:
             inputs = []
             for req in stage.requires:
-                # TODO: maybe use map here instead
-                for intermediate in intermediates:
-                    if type(intermediate) == req:
-                        inputs.append(intermediate)
+                for intermediate, value in intermediates.items():
+                    if intermediate == req:
+                        inputs.append(value)
             outputs = stage(*inputs)
             if type(outputs) not in (list, tuple):
                 outputs = [outputs]
-            intermediates = intermediates.union(intermediates, outputs)
+
+            intermediates.update(dict(zip(stage.provides, outputs)))
 
         outputs = {}
-        for output in self.outputs:
-            for intermediate in intermediates:
-                if type(intermediate) == output:
-                    outputs[type(intermediate)] = intermediate
+        for intermediate, value in intermediates.items():
+            if intermediate in self.outputs:
+                outputs[intermediate] = value
 
         assert(len(outputs) == len(self.outputs))
         return outputs

@@ -36,16 +36,36 @@ class PipelineStage(object):
     def __init__(self, **config):
         pass
 
+    def __call__(self, *inputs):
+        assert len(self.requires) == len(inputs)
+        for required, input in zip(self.requires, inputs):
+            if hasattr(required, 'validate'):
+                required.validate(input)
+
+        outputs = self.call(*inputs)
+        if type(outputs) not in [tuple, list]:
+            assert len(self.provides) == 1, "If there are multiple outputs, "\
+                "then they must be returned as list or tuple! But got {}.".format(outputs)
+            outputs = (outputs, )
+
+        assert len(self.provides) == len(outputs)
+        for provided, output in zip(self.provides, outputs):
+            if hasattr(provided, 'validate'):
+                provided.validate(output)
+        return outputs
+
+    def call(self, *inputs):
+        raise NotImplemented()
+
 
 class ImageReader(PipelineStage):
     requires = [Filename]
     provides = [Image, Timestamp, CameraIndex]
 
-    def __call__(self, fname):
-        assert(isfile(fname.fname))
-        image = imread(fname.fname)
-        camIdx, dt = parse_image_fname(fname.fname, 'readable')
-        return [Image(image), Timestamp(dt), CameraIndex(camIdx)]
+    def call(self, fname):
+        image = imread(fname)
+        camIdx, dt = parse_image_fname(fname, 'readable')
+        return image, dt, camIdx
 
 
 class LocalizerPreprocessor(PipelineStage):
@@ -56,8 +76,8 @@ class LocalizerPreprocessor(PipelineStage):
                  **config):
         self.clahe = createCLAHE(clahe_clip_limit, (tag_width, tag_heigth))
 
-    def __call__(self, image):
-        return [LocalizerInputImage(self.clahe.apply(image.image))]
+    def call(self, image):
+        return [self.clahe.apply(image)]
 
 
 class Localizer(PipelineStage):
@@ -73,32 +93,29 @@ class Localizer(PipelineStage):
         self.localizer.load_weights(saliency_model_path)
         self.localizer.compile()
 
-    def __call__(self, input):
+    def call(self, image):
         results = self.localizer.detect_tags(
-            input.image, saliency_threshold=self.saliency_threshold)
+            image, saliency_threshold=self.saliency_threshold)
         saliencies, candidates, rois, saliency_image = results
 
         # TODO: investigate source of offset
         offset = 6
         candidates -= offset
 
-        return [Regions(rois),
-                SaliencyImage(saliency_image),
-                Saliencies(saliencies),
-                Candidates(candidates)]
+        return [rois, saliency_image, saliencies, candidates]
 
 
 class DecoderPreprocessor(PipelineStage):
     requires = [Image, Candidates]
     provides = [DecoderRegions]
 
-    def __call__(self, image, candidates):
-        rois, mask = localizer.util.extract_rois(candidates.candidates,
-                                                 image.image)
+    def call(self, image, candidates):
+        rois, mask = localizer.util.extract_rois(candidates,
+                                                 image)
         rois = gaussian_filter1d(
             gaussian_filter1d(rois, 2/3, axis=-1), 2 / 3, axis=-2)
         # TODO: add localizer/decoder roi size difference to config
-        return [DecoderRegions((rois[:, :, 18:-18, 18:-18] / 255.) * 2 - 1)]
+        return (rois[:, :, 18:-18, 18:-18] / 255.) * 2 - 1
 
 
 class Decoder(PipelineStage):
@@ -114,31 +131,28 @@ class Decoder(PipelineStage):
         # time model.predict() is called.
         self.model._make_predict_function()
 
-    def __call__(self, regions, candidates):
-        ids = self.model.predict(regions.regions)
-
-        # TODO
-        positions = candidates.candidates
+    def call(self, regions, candidates):
+        ids = self.model.predict(regions)
+        positions = candidates
+        # TODO: set orientations
         orientations = np.zeros((len(positions), 3))
-
-        return [Positions(positions),
-                Orientations(orientations),
-                IDs(np.array(ids).T[0])]
+        return [positions, orientations, np.array(ids).T[0]]
 
 
 class CoordinateMapper(PipelineStage):
     requires = [Positions]
     provides = [HivePositions]
 
-    def __call__(self, pos):
-        return HivePositions(pos.positions)
+    def call(self, pos):
+        # TODO: map coordinates
+        return pos
 
 
 class ResultMerger(PipelineStage):
     requires = [Positions, HivePositions, Orientations, IDs, Saliencies]
     provides = [PipelineResult]
 
-    def __call__(self, positions, hive_positions, orientations, ids, saliencies):
+    def call(self, positions, hive_positions, orientations, ids, saliencies):
         return PipelineResult(
             positions,
             hive_positions,
@@ -157,10 +171,9 @@ class LocalizerVisualizer(PipelineStage):
     requires = [Image, Candidates]
     provides = [CandidateOverlay]
 
-    def __call__(self, image, candidates):
-        overlay = get_roi_overlay(candidates.candidates, image.image / 255.)
-
-        return [CandidateOverlay(overlay)]
+    def call(self, image, candidates):
+        overlay = get_roi_overlay(candidates, image / 255.)
+        return overlay
 
 
 class ResultVisualizer(PipelineStage):

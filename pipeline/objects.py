@@ -1,88 +1,9 @@
+import numpy as np
+import os
+
+
 class PipelineObject(object):
     pass
-
-
-class Filename(PipelineObject):
-    def __init__(self, fname):
-        self.fname = fname
-
-
-class CameraIndex(PipelineObject):
-    def __init__(self, idx):
-        self.idx = idx
-
-
-class Image(PipelineObject):
-    def __init__(self, image):
-        self.image = image
-
-
-class Timestamp(PipelineObject):
-    def __init__(self, timestamp):
-        self.timestamp = timestamp
-
-
-class LocalizerInputImage(PipelineObject):
-    ''' Downsampled and preprocessed '''
-    def __init__(self, image):
-        self.image = image
-
-
-class Regions(PipelineObject):
-    ''' Image patches of candidates (original image size) '''
-    def __init__(self, regions):
-        self.regions = regions
-
-
-class SaliencyImage(PipelineObject):
-    ''' Saliency image (downsampled image coordinates) '''
-    def __init__(self, image):
-        self.image = image
-
-
-class Saliencies(PipelineObject):
-    def __init__(self, saliencies):
-        self.saliencies = saliencies
-
-
-class Candidates(PipelineObject):
-    ''' Center positions of localized tags (original image coordinates) '''
-    def __init__(self, candidates):
-        self.candidates = candidates
-
-
-class DecoderRegions(PipelineObject):
-    ''' Blurred image patches for Decoder '''
-    def __init__(self, regions):
-        self.regions = regions
-
-
-class Descriptors(PipelineObject):
-    ''' Output of Autoencoder for each Candidate '''
-    def __init__(self, descriptors):
-        self.descriptors = descriptors
-
-
-class Positions(PipelineObject):
-    ''' Final tag center coordinates (corrected by Decoder) '''
-    def __init__(self, positions):
-        self.positions = positions
-
-
-class HivePositions(PipelineObject):
-    ''' Final tag center in hive coordinate system '''
-    def __init__(self, positions):
-        self.positions = positions
-
-
-class Orientations(PipelineObject):
-    def __init__(self, orientations):
-        self.orientations = orientations
-
-
-class IDs(PipelineObject):
-    def __init__(self, ids):
-        self.ids = ids
 
 
 class PipelineResult(PipelineObject):
@@ -94,11 +15,119 @@ class PipelineResult(PipelineObject):
         self.saliencies = saliencies
 
 
-class CandidateOverlay(PipelineObject):
-    def __init__(self, overlay):
-        self.overlay = overlay
+class PipelineObjectDescription(object):
+    type = None
+
+    @classmethod
+    def validate(cls, value):
+        assert type(value) is cls.type
 
 
-class FinalResultOverlay(PipelineObject):
-    def __init__(self, overlay):
-        self.overlay = overlay
+class FilenameDescription(PipelineObjectDescription):
+    type = str
+
+    @classmethod
+    def validate(cls, fname):
+        super(FilenameDescription, cls).validate(fname)
+        assert os.path.isfile(fname)
+
+
+class NumpyArrayDescription(PipelineObjectDescription):
+    type = np.ndarray
+    shape = None
+    ndim = None
+
+    @classmethod
+    def validate(cls, arr):
+        def ndim():
+            if cls.shape is not None:
+                return len(cls.shape)
+            else:
+                return cls.ndim
+
+        super(NumpyArrayDescription, cls).validate(arr)
+        if ndim():
+            assert ndim() == len(arr.shape), \
+                "ndim missmatch: Expected {}, got shape {} with {}"\
+                .format(ndim(), arr.shape, len(arr.shape))
+        if cls.shape is not None:
+            for i, (expected, got) in enumerate(zip(cls.shape, arr.shape)):
+                if expected is not None:
+                    assert expected == got, \
+                        "Shape missmatch at dimension {}: expected {}, got {}."\
+                        .format(i, expected, got)
+
+
+class CameraIndex(PipelineObjectDescription):
+    type = int
+
+
+class Filename(FilenameDescription):
+    pass
+
+
+class Image(NumpyArrayDescription):
+    ndim = 2
+
+
+class Timestamp(PipelineObjectDescription):
+    type = float
+
+
+class LocalizerInputImage(NumpyArrayDescription):
+    ndim = 2
+
+
+class Regions(NumpyArrayDescription):
+    ''' Image patches of candidates (original image size) '''
+    ndim = 4
+
+
+class SaliencyImage(NumpyArrayDescription):
+    ''' Saliency image (downsampled image coordinates) '''
+    ndim = 2
+
+
+class Saliencies(NumpyArrayDescription):
+    pass
+
+
+class Candidates(NumpyArrayDescription):
+    ''' Center positions of localized tags (original image coordinates) '''
+    pass
+
+
+class DecoderRegions(NumpyArrayDescription):
+    ''' Blurred image patches for Decoder '''
+    pass
+
+
+class Descriptors(NumpyArrayDescription):
+    ''' Output of Autoencoder for each Candidate '''
+    pass
+
+
+class Positions(NumpyArrayDescription):
+    ''' Final tag center coordinates (corrected by Decoder) '''
+    pass
+
+
+class HivePositions(NumpyArrayDescription):
+    ''' Final tag center in hive coordinate system '''
+    pass
+
+
+class Orientations(NumpyArrayDescription):
+    pass
+
+
+class IDs(NumpyArrayDescription):
+    pass
+
+
+class CandidateOverlay(NumpyArrayDescription):
+    pass
+
+
+class FinalResultOverlay(NumpyArrayDescription):
+    pass
