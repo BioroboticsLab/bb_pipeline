@@ -1,4 +1,4 @@
-
+from joblib import Parallel, delayed
 from pipeline.objects import Filename, PipelineResult
 import pipeline.stages
 from bb_binary import build_frame_container
@@ -70,16 +70,34 @@ class BBBinaryRepoSink(Sink):
 
 
 class GeneratorProcessor(object):
-    def __init__(self, pipeline, sink_factory):
-        self.pipeline = pipeline
+    def __init__(self, pipelines, sink_factory):
+        if type(pipelines) == Pipeline:
+            pipelines = [pipelines]
+        self.pipelines = pipelines
+        self.parallel = Parallel(n_jobs=len(pipelines), backend='threading',
+                                 pre_dispatch='2.*n_jobs')
         self.sink_factory = sink_factory
 
     def __call__(self, generator):
+
         sink = self.sink_factory()
-        for (data_source, img, ts) in generator:
-            results = self.pipeline([img, ts])
+        evaluations = self.parallel(
+            delayed(GeneratorProcessor._process)(*args) for args in
+            GeneratorProcessor._joblib_generator(self.pipelines, generator))
+
+        for (data_source, results, ts) in evaluations:
             sink.add_frame(data_source, results, ts)
         sink.finish()
+
+    @staticmethod
+    def _process(pipeline, data_source, img, ts):
+        return data_source, pipeline([img, ts]), ts
+
+    @staticmethod
+    def _joblib_generator(pipelines, generator):
+        for idx, (data_source, img, ts) in enumerate(generator):
+            pipeline = pipelines[idx % len(pipelines)]
+            yield pipeline, data_source, img, ts
 
 
 class Pipeline(object):
