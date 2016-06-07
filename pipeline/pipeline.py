@@ -71,6 +71,10 @@ class BBBinaryRepoSink(Sink):
         self.repo.add(fc)
 
 
+def _processSingleInput(pipeline, data_source, img, ts):
+    return data_source, pipeline([img, ts]), ts
+
+
 class GeneratorProcessor(object):
     def __init__(self, pipelines, sink_factory):
         if type(pipelines) == Pipeline:
@@ -84,16 +88,13 @@ class GeneratorProcessor(object):
 
         sink = self.sink_factory()
         evaluations = self.parallel(
-            delayed(GeneratorProcessor._process)(*args) for args in
+            delayed(_processSingleInput)(*args) for args in
             GeneratorProcessor._joblib_generator(self.pipelines, generator))
 
         for (data_source, results, ts) in evaluations:
             sink.add_frame(data_source, results, ts)
         sink.finish()
 
-    @staticmethod
-    def _process(pipeline, data_source, img, ts):
-        return data_source, pipeline([img, ts]), ts
 
     @staticmethod
     def _joblib_generator(pipelines, generator):
