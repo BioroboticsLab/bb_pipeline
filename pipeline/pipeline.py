@@ -1,3 +1,5 @@
+import av
+import time
 from joblib import Parallel, delayed
 from pipeline.objects import Filename, PipelineResult
 import pipeline.stages
@@ -98,6 +100,21 @@ class GeneratorProcessor(object):
         for idx, (data_source, img, ts) in enumerate(generator):
             pipeline = pipelines[idx % len(pipelines)]
             yield pipeline, data_source, img, ts
+
+
+def video_generator(fname_video, fname_ts):
+    # TODO: parse timestamps
+    ts = time.time()
+    data_source = DataSource.new_message(filename=fname_video)
+
+    container = av.open(fname_video)
+    assert(len(container.streams) == 1)
+    video = container.streams[0]
+
+    for i, packet in enumerate(container.demux(video)):
+        for frame in packet.decode():
+            img = frame.to_rgb().to_nd_array()[:, :, 0]
+            yield data_source, img, ts + i
 
 
 class Pipeline(object):
