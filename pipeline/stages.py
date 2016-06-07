@@ -64,7 +64,7 @@ class ImageReader(PipelineStage):
 
     def call(self, fname):
         image = imread(fname)
-        camIdx, dt = parse_image_fname(fname, 'readable')
+        camIdx, dt = parse_image_fname(fname, 'beesbook')
         return image, dt, camIdx
 
 
