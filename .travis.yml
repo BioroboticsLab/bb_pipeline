@@ -16,7 +16,6 @@ addons:
       - ubuntu-toolchain-r-test
     packages:
       - yasm
-      - build-essentials
       - gcc-4.9
       - g++-4.9
       - python-opencv
@@ -26,14 +25,12 @@ before_install:
   - export THREADS=$((`nproc` + 1))
   - echo "THREADS = $THREADS"
   - cd "$HOME"
-  - ls "$HOME/ffmpeg/lib/"
   - if [ ! -f "$HOME/ffmpeg/lib/libavcodec.so" ]; then git clone --depth 1 --branch n3.0.2 https://github.com/FFmpeg/FFmpeg.git; fi
   - if [ ! -f "$HOME/ffmpeg/lib/libavcodec.so" ]; then mkdir -p tmp; cd tmp; fi
   - if [ ! -f "$HOME/ffmpeg/lib/libavcodec.so" ]; then $HOME/FFmpeg/configure --enable-shared --prefix=$HOME/ffmpeg; fi
   - if [ ! -f "$HOME/ffmpeg/lib/libavcodec.so" ]; then make -j $THREADS; fi
   - if [ ! -f "$HOME/ffmpeg/lib/libavcodec.so" ]; then make install; fi
   - cd "$CI_HOME"
-  - ls
 
 install:
   - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
@@ -43,7 +40,7 @@ install:
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
   - conda info -a
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy matplotlib pytest h5py pillow scikit-image pandas scikit-learn pytz joblib
+  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy matplotlib h5py pillow scikit-image pandas scikit-learn pytz joblib
   - source activate test-environment
   - conda install -q -c https://conda.binstar.org/menpo opencv3
   - PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$HOME/ffmpeg/lib/pkgconfig" pip install av
@@ -52,7 +49,11 @@ install:
   - pip install git+git://github.com/nebw/saliency-localizer.git#egg=saliency_localizer>=0.0.1
   - CC=/usr/bin/gcc-4.9 CXX=/usr/bin/g++-4.9 pip install pycapnp
   - pip install git+git://github.com/BioroboticsLab/bb_binary.git#egg=bb_binary
-  - pip install .
+  - pip install pytest pytest-benchmark pytest-cov pytest-xdist
+  - pip install coveralls
+  - pip install -e .
   - ./get_test_models.sh
 script:
   - LD_LIBRARY_PATH="$HOME/ffmpeg/lib/:$LD_LIBRARY_PATH" py.test
+after_success:
+  - coveralls
