@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
 import logging
-from os.path import isfile
 import sys
 
 from cv2 import createCLAHE

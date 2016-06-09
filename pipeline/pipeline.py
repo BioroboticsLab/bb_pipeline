@@ -1,12 +1,11 @@
 import av
 import time
 from joblib import Parallel, delayed
-from pipeline.objects import Filename, PipelineResult
+from pipeline.objects import PipelineResult
 import pipeline.stages
-from bb_binary import build_frame_container
 import inspect
 from inspect import Parameter
-from bb_binary import DataSource, FrameContainer, build_frame
+from bb_binary import DataSource, FrameContainer
 
 
 class Sink:
@@ -94,7 +93,6 @@ class GeneratorProcessor(object):
         for (data_source, results, ts) in evaluations:
             sink.add_frame(data_source, results, ts)
         sink.finish()
-
 
     @staticmethod
     def _joblib_generator(pipelines, generator):
@@ -235,7 +233,7 @@ class Pipeline(object):
     def _instantiate_stage(self, stage):
         try:
             return stage(**self.config)
-        except TypeError as e:
+        except TypeError:
             sig = inspect.signature(stage)
             missing_configs = []
             for name, param in sig.parameters.items():

@@ -13,10 +13,9 @@ from pipeline.pipeline import GeneratorProcessor, BBBinaryRepoSink, \
 from pipeline.stages import Localizer, PipelineStage, ImageReader, \
     LocalizerPreprocessor, TagSimilarityEncoder, Decoder, DecoderPreprocessor
 
-from pipeline.objects import DecoderRegions, Filename, Image, Timestamp, \
-    CameraIndex, Positions, HivePositions, Orientations, IDs, Saliencies, \
-    PipelineResult, Candidates, CandidateOverlay, FinalResultOverlay, \
-    Regions, Descriptors, LocalizerInputImage, SaliencyImage
+from pipeline.objects import Filename, Image, Timestamp, CameraIndex, IDs, \
+    PipelineResult, Candidates, Regions, Descriptors, LocalizerInputImage, \
+    SaliencyImage
 
 from bb_binary import Repository, DataSource, FrameContainer
 
@@ -251,7 +250,6 @@ def test_generator_processor_threads(tmpdir, bees_video, config):
     fnames = list(repo.iter_fnames())
     assert len(fnames) == 1
 
-    last_ts = 0
     num_frames = 0
     for fname in repo.iter_fnames():
         with open(fname, 'rb') as f:
