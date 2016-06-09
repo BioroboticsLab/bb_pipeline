@@ -25,7 +25,8 @@ from bb_binary import parse_image_fname
 from pipeline.objects import DecoderRegions, Filename, Image, Timestamp, \
     CameraIndex, Positions, HivePositions, Orientations, IDs, Saliencies, \
     PipelineResult, Candidates, CandidateOverlay, FinalResultOverlay, \
-    Regions, Descriptors, LocalizerInputImage, SaliencyImage
+    Regions, Descriptors, LocalizerInputImage, SaliencyImage, \
+    PaddedImage, PaddedCandidates
 
 
 class PipelineStage(object):
@@ -69,19 +70,21 @@ class ImageReader(PipelineStage):
 
 class LocalizerPreprocessor(PipelineStage):
     requires = [Image]
-    provides = [LocalizerInputImage]
+    provides = [PaddedImage, LocalizerInputImage]
 
     def __init__(self, clahe_clip_limit=2, tag_width=64, tag_heigth=64,
                  **config):
         self.clahe = createCLAHE(clahe_clip_limit, (tag_width, tag_heigth))
 
     def call(self, image):
-        return [self.clahe.apply(image)]
+        padded = np.pad(image, [s // 2 for s in localizer.config.data_imsize],
+                        mode='edge')
+        return [padded, self.clahe.apply(padded)]
 
 
 class Localizer(PipelineStage):
     requires = [LocalizerInputImage]
-    provides = [Regions, SaliencyImage, Saliencies, Candidates]
+    provides = [Regions, SaliencyImage, Saliencies, Candidates, PaddedCandidates]
 
     def __init__(self, saliency_model_path: str,
                  saliency_threshold=0.5,
@@ -101,16 +104,22 @@ class Localizer(PipelineStage):
         offset = 6
         candidates -= offset
 
-        return [rois, saliency_image, saliencies, candidates]
+        padded_candidates = np.copy(candidates)
+
+        assert(localizer.config.data_imsize[0] == localizer.config.data_imsize[1])
+        candidates -= localizer.config.data_imsize[0] // 2
+
+        return [rois, saliency_image, saliencies, candidates, padded_candidates]
 
 
 class DecoderPreprocessor(PipelineStage):
-    requires = [Image, Candidates]
+    requires = [PaddedImage, PaddedCandidates]
     provides = [DecoderRegions]
 
     def call(self, image, candidates):
         rois, mask = localizer.util.extract_rois(candidates,
                                                  image)
+        assert(len(rois) == len(candidates))
         rois = gaussian_filter1d(
             gaussian_filter1d(rois, 2/3, axis=-1), 2 / 3, axis=-2)
         # TODO: add localizer/decoder roi size difference to config

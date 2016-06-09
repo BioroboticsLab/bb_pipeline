@@ -7,6 +7,7 @@ import pytz
 from scipy.misc import imread
 import numpy as np
 
+import localizer.config
 from pipeline import Pipeline
 from pipeline.pipeline import GeneratorProcessor, BBBinaryRepoSink, \
     video_generator
@@ -15,7 +16,7 @@ from pipeline.stages import Localizer, PipelineStage, ImageReader, \
 
 from pipeline.objects import Filename, Image, Timestamp, CameraIndex, IDs, \
     PipelineResult, Candidates, Regions, Descriptors, LocalizerInputImage, \
-    SaliencyImage
+    SaliencyImage, PaddedCandidates, PaddedImage
 
 from bb_binary import Repository, DataSource, FrameContainer
 
@@ -137,6 +138,25 @@ def test_localizer(config):
     for candidate in candidates:
         assert(candidate[0] >= 0 and candidate[0] < 3000)
         assert(candidate[1] >= 0 and candidate[1] < 4000)
+
+
+def test_padding(config):
+    pipeline = Pipeline([Filename], [PaddedCandidates, Candidates,
+                                     PaddedImage, Image],
+                        **config)
+
+    fname = os.path.dirname(__file__) + '/data/Cam_2_20150821161530_884267.jpeg'
+    outputs = pipeline([fname])
+
+    assert len(outputs) == 4
+    assert PaddedImage in outputs
+    assert PaddedCandidates in outputs
+
+    assert(localizer.config.data_imsize[0] == localizer.config.data_imsize[1])
+    assert(localizer.config.data_imsize[0] % 2 == 0)
+    offset = localizer.config.data_imsize[0] // 2
+    for padded, original in zip(outputs[PaddedCandidates], outputs[Candidates]):
+        assert(all([(pc - offset) == oc for pc, oc in zip(padded, original)]))
 
 
 def test_decoder(config):

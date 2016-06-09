@@ -70,6 +70,10 @@ class Image(NumpyArrayDescription):
     ndim = 2
 
 
+class PaddedImage(NumpyArrayDescription):
+    ndim = 2
+
+
 class Timestamp(PipelineObjectDescription):
     type = float
 
@@ -94,6 +98,11 @@ class Saliencies(NumpyArrayDescription):
 
 class Candidates(NumpyArrayDescription):
     ''' Center positions of localized tags (original image coordinates) '''
+    pass
+
+
+class PaddedCandidates(NumpyArrayDescription):
+    ''' Center positions of localized tags (padded image coordinates) '''
     pass
 
 
