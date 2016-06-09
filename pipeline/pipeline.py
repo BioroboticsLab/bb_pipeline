@@ -1,11 +1,15 @@
 import av
-import time
+from datetime import datetime
+from itertools import chain
+import pytz
+import os
 from joblib import Parallel, delayed
 from pipeline.objects import PipelineResult
 import pipeline.stages
 import inspect
 from inspect import Parameter
-from bb_binary import DataSource, FrameContainer
+from bb_binary import DataSource, FrameContainer, \
+    parse_image_fname, parse_video_fname, get_timezone
 
 
 class Sink:
@@ -101,19 +105,46 @@ class GeneratorProcessor(object):
             yield pipeline, data_source, img, ts
 
 
-def video_generator(fname_video, fname_ts):
-    # TODO: parse timestamps
-    ts = time.time()
+def get_timestamps(fname_video, path_filelists):
+    def get_flist_name(ts):
+        fmt = '%Y%m%d'
+        dt_utc = datetime.fromtimestamp(ts, tz=pytz.utc)
+        dt = dt_utc.astimezone(get_timezone())
+        return dt.strftime(fmt) + '.txt'
+
+    def find_file(name, path):
+        for root, dirs, files in os.walk(path):
+            if name in files:
+                return os.path.join(root, name)
+
+    cam, from_ts, to_ts = parse_video_fname(fname_video)
+    txt_files = set([get_flist_name(from_ts), get_flist_name(to_ts)])
+    txt_paths = [find_file(f, path_filelists) for f in txt_files]
+
+    image_fnames = list(chain.from_iterable([open(path, 'r').readlines() for path in txt_paths]))
+    first_fname = fname_video.split('_TO_')[0] + '.jpeg\n'
+    second_fname = fname_video.split('_TO_')[1].split('.mkv')[0] + '.jpeg\n'
+    image_fnames.sort()
+
+    fnames = image_fnames[image_fnames.index(first_fname):image_fnames.index(second_fname) + 1]
+    return [parse_image_fname(fn, format='beesbook')[1] for fn in fnames]
+
+
+def video_generator(path_video, path_filelists):
+    fname_video = os.path.basename(path_video)
+    timestamps = get_timestamps(fname_video, path_filelists)
     data_source = DataSource.new_message(filename=fname_video)
 
-    container = av.open(fname_video)
+    container = av.open(path_video)
     assert(len(container.streams) == 1)
     video = container.streams[0]
 
-    for i, packet in enumerate(container.demux(video)):
+    idx = 0
+    for packet in container.demux(video):
         for frame in packet.decode():
             img = frame.to_rgb().to_nd_array()[:, :, 0]
-            yield data_source, img, ts + i
+            yield data_source, img, timestamps[idx]
+            idx += 1
 
 
 class Pipeline(object):

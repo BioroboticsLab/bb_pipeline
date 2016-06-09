@@ -33,7 +33,12 @@ def bees_image():
 
 @pytest.fixture
 def bees_video():
-    return get_test_fname('data/From_Cam_0_20150821161642_833382.mkv')
+    return get_test_fname('data/Cam_0_20150821161642_833382_TO_Cam_0_20150821161648_253846.mkv')
+
+
+@pytest.fixture
+def filelists_path():
+    return get_test_fname('data/filelists')
 
 
 @pytest.fixture
@@ -108,9 +113,14 @@ def test_imagereader(bees_image, config):
     assert(idx == 2)
 
 
-def test_video_generator(bees_video):
-    gen = video_generator(bees_video, None)
-    assert(len(list(gen)) == 3)
+def test_video_generator(bees_video, filelists_path):
+    gen = video_generator(bees_video, filelists_path)
+    results = list(gen)
+    assert(len(results) == 3)
+    prev_ts = 0.
+    for _, _, ts in results:
+        assert(ts > prev_ts)
+        prev_ts = ts
 
 
 def test_localizer(config):
@@ -231,13 +241,13 @@ def test_generator_processor(tmpdir, bees_image, config):
         last_ts = fc.fromTimestamp
 
 
-def test_generator_processor_video(tmpdir, bees_video, config):
+def test_generator_processor_video(tmpdir, bees_video, filelists_path, config):
     repo = Repository(str(tmpdir))
     pipeline = Pipeline([Image, Timestamp], [PipelineResult], **config)
     gen_processor = GeneratorProcessor(
         pipeline, lambda: BBBinaryRepoSink(repo))
 
-    gen = video_generator(bees_video, None)
+    gen = video_generator(bees_video, filelists_path)
 
     gen_processor(gen)
     fnames = list(repo.iter_fnames())
@@ -250,21 +260,21 @@ def test_generator_processor_video(tmpdir, bees_video, config):
         with open(fname, 'rb') as f:
             fc = FrameContainer.read(f)
             num_frames += len(list(fc.frames))
-        assert fc.dataSources[0].filename == bees_video
+        assert fc.dataSources[0].filename == os.path.basename(bees_video)
         assert last_ts < fc.fromTimestamp
         last_ts = fc.fromTimestamp
 
     assert(num_frames == 3)
 
 
-def test_generator_processor_threads(tmpdir, bees_video, config):
+def test_generator_processor_threads(tmpdir, bees_video, filelists_path, config):
     repo = Repository(str(tmpdir))
     pipelines = [Pipeline([Image, Timestamp], [PipelineResult], **config) for
                  _ in range(3)]
     gen_processor = GeneratorProcessor(
         pipelines, lambda: BBBinaryRepoSink(repo))
 
-    gen = video_generator(bees_video, None)
+    gen = video_generator(bees_video, filelists_path)
 
     gen_processor(gen)
     fnames = list(repo.iter_fnames())
