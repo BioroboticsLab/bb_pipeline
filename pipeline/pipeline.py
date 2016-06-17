@@ -55,6 +55,7 @@ class BBBinaryRepoSink(Sink):
         for i, (data_source_idx, detection, timestamp) in enumerate(self.frames):
             frame = frames[i]
             frame.dataSourceIdx = data_source_idx
+            frame.frameIdx = int(i)
             detections_builder = frame.detectionsUnion.init(
                 'detectionsDP', len(detection.positions))
             for i, db in enumerate(detections_builder):
