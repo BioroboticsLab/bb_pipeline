@@ -43,7 +43,7 @@ def filelists_path():
 
 @pytest.fixture
 def config():
-    saliency_weights = get_test_fname('models/localizer/')
+    saliency_weights = get_test_fname('models/localizer/saliency-weights.hdf5')
     decoder_weights = get_test_fname('models/decoder/decoder_weights.hdf5')
     decoder_model = get_test_fname('models/decoder/decoder_architecture.hdf5')
     for fname in (saliency_weights, decoder_model, decoder_weights):

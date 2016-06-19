@@ -101,7 +101,7 @@ class Localizer(PipelineStage):
         saliencies, candidates, rois, saliency_image = results
 
         # TODO: investigate source of offset
-        offset = 6
+        offset = 4
         candidates -= offset
 
         padded_candidates = np.copy(candidates)

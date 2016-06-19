@@ -14,7 +14,7 @@ mkdir -p  $decoder_dir
 
 decoder_weights_fname="$decoder_dir/decoder_weights.hdf5"
 decoder_model_fname="$decoder_dir/decoder_architecture.hdf5"
-localizer_weights_fname="$localizer_dir/saliency-weights"
+localizer_weights_fname="$localizer_dir/saliency-weights.hdf5"
 
 if [ ! -e "$decoder_weights_fname" ]; then
     curl -L $decoder_weights > $decoder_weights_fname
