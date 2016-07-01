@@ -13,7 +13,7 @@ mkdir -p  $localizer_dir
 mkdir -p  $decoder_dir
 
 decoder_weights_fname="$decoder_dir/decoder_weights.hdf5"
-decoder_model_fname="$decoder_dir/decoder_architecture.hdf5"
+decoder_model_fname="$decoder_dir/decoder_architecture.json"
 localizer_weights_fname="$localizer_dir/saliency-weights.hdf5"
 
 if [ ! -e "$decoder_weights_fname" ]; then
