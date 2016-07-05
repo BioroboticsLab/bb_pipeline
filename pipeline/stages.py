@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
 import logging
-import sys
 
 from cv2 import createCLAHE
 import numpy as np
@@ -67,14 +66,20 @@ class LocalizerPreprocessor(PipelineStage):
     requires = [Image]
     provides = [PaddedImage, LocalizerInputImage]
 
-    def __init__(self, clahe_clip_limit=2, tag_width=64, tag_heigth=64,
+    def __init__(self,
+                 clahe_clip_limit=2,
+                 clahe_tile_width=64,
+                 clahe_tile_heigth=64,
                  **config):
-        self.clahe = createCLAHE(clahe_clip_limit, (tag_width, tag_heigth))
+        self.clahe = createCLAHE(clahe_clip_limit, (clahe_tile_width, clahe_tile_heigth))
+
+    @staticmethod
+    def pad(image):
+        return np.pad(image, [s // 2 for s in localizer.config.data_imsize], mode='edge')
 
     def call(self, image):
-        padded = np.pad(image, [s // 2 for s in localizer.config.data_imsize],
-                        mode='edge')
-        return [padded, self.clahe.apply(padded)]
+        return [LocalizerPreprocessor.pad(image),
+                LocalizerPreprocessor.pad(self.clahe.apply(image))]
 
 
 class Localizer(PipelineStage):
