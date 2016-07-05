@@ -207,8 +207,8 @@ def test_print_config_dict(config):
     assert config_dict['decoder_model_path'] == 'REQUIRED'
     assert config_dict['decoder_weigths_path'] == 'REQUIRED'
     assert config_dict['saliency_model_path'] == 'REQUIRED'
-    assert 'tag_heigth' in config_dict
-    assert 'tag_width' in config_dict
+    assert 'clahe_tile_heigth' in config_dict
+    assert 'clahe_tile_width' in config_dict
     assert 'clahe_clip_limit' in config_dict
     assert 'saliency_threshold' in config_dict
 
