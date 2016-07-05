@@ -1,3 +1,4 @@
+from os.path import join as pjoin
 from distutils.core import setup
 from pip.req import parse_requirements
 
@@ -9,6 +10,8 @@ setup(
     name='deeppipeline',
     version='0.0.1',
     description='',
+    scripts=[pjoin('bin', 'bb_pipeline'),
+             pjoin('bin', 'bb_pipeline_batch')],
     install_requires=reqs,
     dependency_links=dep_links,
     packages=['pipeline']
