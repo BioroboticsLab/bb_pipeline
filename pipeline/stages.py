@@ -8,17 +8,12 @@ import numpy as np
 from skimage.io import imread
 from scipy.ndimage.filters import gaussian_filter1d
 
-# TODO: don't print keras import messages
-stderr = sys.stderr                     # noqa
-sys.stderr = open('/dev/null', 'w')     # noqa
-
 import localizer
 import localizer.util
 import localizer.config
 from localizer.visualization import get_roi_overlay
 from localizer.localizer import Localizer as LocalizerAPI
 from keras.models import model_from_json
-sys.stderr = stderr                     # noqa
 
 from bb_binary import parse_image_fname
 
