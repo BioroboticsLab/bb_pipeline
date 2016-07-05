@@ -224,7 +224,7 @@ def test_generator_processor(tmpdir, bees_image, config):
     repo = Repository(str(tmpdir))
     pipeline = Pipeline([Image, Timestamp], [PipelineResult], **config)
     gen_processor = GeneratorProcessor(
-        pipeline, lambda: BBBinaryRepoSink(repo))
+        pipeline, lambda: BBBinaryRepoSink(repo, camId=2))
 
     gen_processor(image_generator())
     gen_processor(image_generator())
@@ -245,7 +245,7 @@ def test_generator_processor_video(tmpdir, bees_video, filelists_path, config):
     repo = Repository(str(tmpdir))
     pipeline = Pipeline([Image, Timestamp], [PipelineResult], **config)
     gen_processor = GeneratorProcessor(
-        pipeline, lambda: BBBinaryRepoSink(repo))
+        pipeline, lambda: BBBinaryRepoSink(repo, camId=0))
 
     gen = video_generator(bees_video, filelists_path)
 
@@ -272,7 +272,7 @@ def test_generator_processor_threads(tmpdir, bees_video, filelists_path, config)
     pipelines = [Pipeline([Image, Timestamp], [PipelineResult], **config) for
                  _ in range(3)]
     gen_processor = GeneratorProcessor(
-        pipelines, lambda: BBBinaryRepoSink(repo))
+        pipelines, lambda: BBBinaryRepoSink(repo, camId=0))
 
     gen = video_generator(bees_video, filelists_path)
 
