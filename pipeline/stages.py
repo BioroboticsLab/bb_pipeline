@@ -86,7 +86,8 @@ class Localizer(PipelineStage):
     requires = [LocalizerInputImage]
     provides = [Regions, SaliencyImage, Saliencies, Candidates, PaddedCandidates]
 
-    def __init__(self, saliency_model_path: str,
+    def __init__(self,
+                 saliency_model_path,
                  saliency_threshold=0.5,
                  **config):
         self.saliency_threshold = saliency_threshold
