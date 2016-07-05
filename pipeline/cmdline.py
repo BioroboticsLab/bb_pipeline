@@ -1,5 +1,6 @@
 import logging
 
+
 def setup_logging():
     logger = logging.getLogger('beesbook_pipeline')
 
@@ -30,10 +31,11 @@ def get_shared_positional_arguments():
                                              'type': str}))
     return arguments
 
+
 def get_shared_optional_arguments():
     arguments = list()
     arguments.append(('--saliency_threshold', {'help': 'threshold for saliency localizer',
-                                               'type': float, 'default':0.1}))
+                                               'type': float, 'default': 0.1}))
     arguments.append(('--num_threads', {'help': 'number of images to process in parallel',
-                                        'type': int, 'default':1}))
+                                        'type': int, 'default': 1}))
     return arguments
