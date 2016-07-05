@@ -9,4 +9,3 @@ pytest-cov>=2.2.1
 pytest-flake8>=0.5
 git+git://github.com/nebw/saliency-localizer.git#egg=saliency-localizer
 git+git://github.com/BioroboticsLab/bb_binary.git#egg=bb_binary
-
