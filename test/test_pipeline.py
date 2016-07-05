@@ -45,7 +45,7 @@ def filelists_path():
 def config():
     saliency_weights = get_test_fname('models/localizer/saliency-weights.hdf5')
     decoder_weights = get_test_fname('models/decoder/decoder_weights.hdf5')
-    decoder_model = get_test_fname('models/decoder/decoder_architecture.hdf5')
+    decoder_model = get_test_fname('models/decoder/decoder_architecture.json')
     for fname in (saliency_weights, decoder_model, decoder_weights):
         assert os.path.exists(fname), \
             "Not found {}. Did you forgot to run `./get_test_models.sh`?".format(fname)
