@@ -21,10 +21,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     pipeline_cmd = None
-    if os.path.exists(os.path.join(os.getcwd(), 'bb_pipeline.py')):
-        pipeline_cmd = os.path.join(os.getcwd(), 'bb_pipeline.py')
+    if os.path.exists(os.path.join(os.getcwd(), 'bb_pipeline')):
+        pipeline_cmd = os.path.join(os.getcwd(), 'bb_pipeline')
     else:
-        pipeline_cmd = shutil.which('bb_pipeline.py')
+        pipeline_cmd = shutil.which('bb_pipeline')
     assert(pipeline_cmd is not None)
 
     video_files = []
