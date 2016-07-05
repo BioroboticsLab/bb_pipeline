@@ -106,12 +106,17 @@ class GeneratorProcessor(object):
             yield pipeline, data_source, img, ts
 
 
-def get_timestamps(fname_video, path_filelists):
+def get_timestamps(fname_video, path_filelists, ts_format='2015'):
     def get_flist_name(ts):
         fmt = '%Y%m%d'
         dt_utc = datetime.fromtimestamp(ts, tz=pytz.utc)
         dt = dt_utc.astimezone(get_timezone())
-        return dt.strftime(fmt) + '.txt'
+        if ts_format == '2014':
+            return dt.strftime(fmt) + '.txt'
+        elif ts_format == '2015':
+            return os.path.join(dt.strftime(fmt), 'images.txt')
+        else:
+            assert(False)
 
     def find_file(name, path):
         for root, dirs, files in os.walk(path):
