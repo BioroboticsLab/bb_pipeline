@@ -127,8 +127,9 @@ def get_timestamps(fname_video, path_filelists, ts_format='2015'):
 
     def find_file(name, path):
         for root, dirs, files in os.walk(path):
-            if name in files:
-                return os.path.join(root, name)
+            if name in [os.path.join(os.path.basename(root), f) for f in files]:
+                return os.path.join(path, name)
+        assert(False)
 
     cam, from_ts, to_ts = parse_video_fname(fname_video)
     txt_files = set([get_flist_name(from_ts), get_flist_name(to_ts)])
