@@ -30,6 +30,7 @@ class BBBinaryRepoSink(Sink):
         self.frames = []
         self.data_sources_fname = []
         self.data_sources = []
+        self.cam = None
 
     def add_frame(self, data_source, results, timestamp):
         detections = results[PipelineResult]
@@ -39,6 +40,11 @@ class BBBinaryRepoSink(Sink):
             self.data_sources_fname.append(fname)
         data_source_idx = self.data_sources_fname.index(fname)
         self.frames.append((data_source_idx, detections, timestamp))
+        cam, _, _ = parse_video_fname(fname)
+        if self.cam is not None:
+            self.cam = cam
+        else:
+            assert(self.cam == cam)
 
     def finish(self):
         self.frames.sort(key=lambda x: x[2])
@@ -46,6 +52,7 @@ class BBBinaryRepoSink(Sink):
         end_ts = self.frames[-1][2]
         fc = FrameContainer.new_message(fromTimestamp=start_ts,
                                         toTimestamp=end_ts,
+                                        camId=self.cam,
                                         id=unique_id())
         dataSources = fc.init('dataSources', len(self.data_sources))
         for i, dsource in enumerate(self.data_sources):
