@@ -58,6 +58,7 @@ class BBBinaryRepoSink(Sink):
             frame = frames[i]
             frame.dataSourceIdx = data_source_idx
             frame.frameIdx = int(i)
+            frame.timestamp = timestamp
             detections_builder = frame.detectionsUnion.init(
                 'detectionsDP', len(detection.positions))
             for i, db in enumerate(detections_builder):
@@ -91,7 +92,6 @@ class GeneratorProcessor(object):
         self.sink_factory = sink_factory
 
     def __call__(self, generator):
-
         sink = self.sink_factory()
         evaluations = self.parallel(
             delayed(_processSingleInput)(*args) for args in
