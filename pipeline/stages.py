@@ -141,10 +141,14 @@ class Decoder(PipelineStage):
         self.model._make_predict_function()
 
     def call(self, regions, candidates):
-        ids = self.model.predict(regions)
+        predicitions = self.model.predict(regions)
+        ids = predicitions[:12]
+        z_rot = np.arctan2(predicitions[12], predicitions[13])
+        y_rot = predicitions[14]
+        x_rot = predicitions[15]
+        orientations = np.hstack((z_rot, y_rot, x_rot))
+        # TODO: use offset from decoder net
         positions = candidates
-        # TODO: set orientations
-        orientations = np.zeros((len(positions), 3))
         return [positions, orientations, np.array(ids).T[0]]
 
 
