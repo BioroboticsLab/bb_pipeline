@@ -2,7 +2,7 @@
 
 import logging
 
-from cv2 import createCLAHE
+import cv2
 import numpy as np
 from skimage.io import imread
 from scipy.ndimage.filters import gaussian_filter1d
@@ -71,7 +71,7 @@ class LocalizerPreprocessor(PipelineStage):
                  clahe_tile_width=64,
                  clahe_tile_heigth=64,
                  **config):
-        self.clahe = createCLAHE(clahe_clip_limit, (clahe_tile_width, clahe_tile_heigth))
+        self.clahe = cv2.createCLAHE(clahe_clip_limit, (clahe_tile_width, clahe_tile_heigth))
 
     @staticmethod
     def pad(image):
@@ -190,8 +190,48 @@ class LocalizerVisualizer(PipelineStage):
 
 
 class ResultVisualizer(PipelineStage):
-    requires = [CandidateOverlay, Regions, IDs]
+    requires = [CandidateOverlay, Candidates, Orientations, IDs]
     provides = [FinalResultOverlay]
+
+    @staticmethod
+    def draw_arrow(overlay, z_rotation, position,
+                   vis_line_width,
+                   vis_arrow_length,
+                   vis_arrow_color):
+        x_to = np.round(position[0] + vis_arrow_length * np.cos(z_rotation)).astype(np.int32)
+        y_to = np.round(position[1] + vis_arrow_length * np.sin(z_rotation)).astype(np.int32)
+        cv2.arrowedLine(overlay, tuple(position), (x_to, y_to),
+                        vis_arrow_color, vis_line_width, cv2.LINE_AA)
+
+    @staticmethod
+    def draw_text(overlay, ids, position,
+                  vis_text_color,
+                  vis_text_line_width,
+                  vis_text_offset,
+                  vis_font_size):
+        ids = ''.join([str(int(np.round(c))) for c in list(ids)])
+        cv2.putText(overlay, ids, tuple(position + np.array(vis_text_offset)),
+                    cv2.FONT_HERSHEY_TRIPLEX, vis_font_size,
+                    vis_text_color, vis_text_line_width, cv2.LINE_AA)
+
+    def call(self, overlay, candidates, orientations, ids,
+             vis_arrow_length=150,
+             vis_line_width=6,
+             vis_font_size=1.5,
+             vis_text_color=(0, 0, 0),
+             vis_text_line_width=4,
+             vis_text_offset=(-180, -60),
+             vis_arrow_color=(255, 0, 0),
+             **config):
+        overlay = (np.copy(overlay) * 255).astype(np.uint8)
+        for idx in range(len(candidates)):
+            pos = candidates[idx, ::-1].astype(np.int32)
+            ResultVisualizer.draw_text(overlay, ids[idx], pos,
+                                       vis_text_color, vis_text_line_width,
+                                       vis_text_offset, vis_font_size)
+            ResultVisualizer.draw_arrow(overlay, orientations[idx, 0], pos,
+                                        vis_line_width, vis_arrow_length, vis_arrow_color)
+        return overlay
 
 
 Stages = (ImageReader,
