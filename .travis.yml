@@ -40,7 +40,7 @@ install:
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
   - conda info -a
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy matplotlib h5py pillow scikit-image pandas scikit-learn pytz joblib
+  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy matplotlib h5py pillow scikit-image pandas scikit-learn pytz joblib sphinx
   - source activate test-environment
   - conda install -q -c https://conda.binstar.org/menpo opencv3
   - PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$HOME/ffmpeg/lib/pkgconfig" pip install av
@@ -55,5 +55,6 @@ install:
   - ./get_test_models.sh
 script:
   - LD_LIBRARY_PATH="$HOME/ffmpeg/lib/:$LD_LIBRARY_PATH" py.test
+  - sphinx-build docs _build/html
 after_success:
   - coveralls
