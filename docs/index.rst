@@ -6,24 +6,15 @@
 Welcome to deeppipeline's documentation!
 ========================================
 
-Contents:
-
 .. toctree::
+   :hidden:
    :maxdepth: 2
 
+   api/pipeline
+   api/objects
+   api/distributions
+   api/stages
 
-.. automodule:: pipeline
-    :members:
-    :undoc-members:
-
-
-.. automodule:: pipeline.pipeline
-    :members:
-
-.. automodule:: pipeline.distributions
-    :members:
-    :undoc-members:
-    :show-inheritance:
 
 Indices and tables
 ==================

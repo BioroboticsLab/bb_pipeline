@@ -35,7 +35,8 @@ extensions = [
     'sphinx.ext.todo',
     'sphinx.ext.coverage',
     'sphinx.ext.mathjax',
-    'sphinx.ext.viewcode',
+    'sphinx.ext.linkcode',
+    'sphinx.ext.napoleon',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -115,7 +116,7 @@ todo_include_todos = True
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'alabaster'
+html_theme = 'sphinx_rtd_theme'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -293,3 +294,56 @@ texinfo_documents = [
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'https://docs.python.org/': None}
+
+autodoc_member_order = 'bysource'
+
+def linkcode_resolve(domain, info):
+    """
+    Determine the URL corresponding to Python object
+    """
+    import inspect
+    from os.path import relpath, dirname
+    import pipeline
+    import subprocess
+    if domain != 'py':
+        return None
+
+    modname = info['module']
+    fullname = info['fullname']
+
+    submod = sys.modules.get(modname)
+    if submod is None:
+        return None
+
+    obj = submod
+    for part in fullname.split('.'):
+        try:
+            obj = getattr(obj, part)
+        except:
+            return None
+
+    try:
+        fn = inspect.getsourcefile(obj)
+    except:
+        fn = None
+    if not fn:
+        return None
+
+    try:
+        source, lineno = inspect.findsource(obj)
+    except:
+        lineno = None
+
+    if lineno:
+        linespec = "#L%d" % (lineno + 1)
+    else:
+        linespec = ""
+
+    fn = relpath(fn, start=dirname(pipeline.__file__))
+    p = subprocess.Popen(['git', 'rev-parse', 'HEAD'], stdout=subprocess.PIPE)
+    git_rev, err = p.communicate()
+    git_rev = git_rev.decode('utf-8').rstrip('\n')
+    print(git_rev)
+    print(fn)
+    return "https://github.com/BioroboticsLab/deeppipeline/blob/{}/pipeline/{}{}".format(
+       git_rev, fn, linespec)
