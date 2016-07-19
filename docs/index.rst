@@ -8,7 +8,6 @@ Welcome to deeppipeline's documentation!
    api/pipeline
    api/stages
    api/objects
-   api/distributions
    api/io
 
 
