@@ -1,5 +1,5 @@
-Pipeline
-================
+pipeline.pipeline
+=================
 
 
 .. automodule:: pipeline.pipeline

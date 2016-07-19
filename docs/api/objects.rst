@@ -1,4 +1,4 @@
-Pipeline Objects
+pipeline.objects
 ================
 
 

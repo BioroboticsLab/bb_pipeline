@@ -1,4 +1,4 @@
-Pipeline Stages
+pipeline.stages
 ================
 
 

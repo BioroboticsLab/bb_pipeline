@@ -1,5 +1,5 @@
-Distributions
-=============
+pipeline.distributions
+======================
 
 
 .. automodule:: pipeline.distributions

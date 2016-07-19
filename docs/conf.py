@@ -80,7 +80,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'deeppipeline'
-copyright = u'2016, Benjamin Wild, Leon Sixt'
+copyright = u'2016, BioroboticsLab Fu Berlin'
 author = u'Benjamin Wild, Leon Sixt'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -321,6 +321,8 @@ texinfo_documents = [
 intersphinx_mapping = {'https://docs.python.org/': None}
 
 autodoc_member_order = 'bysource'
+add_module_names = False
+
 
 def linkcode_resolve(domain, info):
     """
