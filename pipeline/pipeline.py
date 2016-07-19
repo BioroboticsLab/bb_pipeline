@@ -3,6 +3,9 @@ import pipeline.stages
 import inspect
 from inspect import Parameter
 
+# for backward compatibility
+from pipeline.io import video_generator, BBBinaryRepoSink  # noqa
+
 
 def _processSingleInput(pipeline, data_source, img, ts):
     return data_source, pipeline([img, ts]), ts
