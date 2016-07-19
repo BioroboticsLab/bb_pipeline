@@ -5,7 +5,8 @@ from itertools import chain
 
 from pipeline import Pipeline
 from pipeline.cmdline import logger, get_shared_positional_arguments, get_shared_optional_arguments
-from pipeline.pipeline import GeneratorProcessor, BBBinaryRepoSink, video_generator
+from pipeline.pipeline import GeneratorProcessor
+from pipeline.io import BBBinaryRepoSink, video_generator
 from pipeline.objects import PipelineResult, Image, Timestamp
 from bb_binary import Repository, parse_video_fname
 

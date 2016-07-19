@@ -1,5 +1,4 @@
 import os
-import pytest
 import time
 import datetime
 import pytz
@@ -9,8 +8,8 @@ import numpy as np
 
 import localizer.config
 from pipeline import Pipeline
-from pipeline.pipeline import GeneratorProcessor, BBBinaryRepoSink, \
-    video_generator
+from pipeline.pipeline import GeneratorProcessor
+from pipeline.io import BBBinaryRepoSink, video_generator
 from pipeline.stages import Localizer, PipelineStage, ImageReader, \
     LocalizerPreprocessor, TagSimilarityEncoder, Decoder, DecoderPreprocessor
 
@@ -21,49 +20,13 @@ from pipeline.objects import Filename, Image, Timestamp, CameraIndex, IDs, \
 from bb_binary import Repository, DataSource, FrameContainer
 
 
-def get_test_fname(name):
-    test_dir = os.path.dirname(__file__)
-    return os.path.join(test_dir, name)
-
-
-@pytest.fixture
-def bees_image():
-    return get_test_fname('data/Cam_2_20150821161530_884267.jpeg')
-
-
-@pytest.fixture
-def bees_video():
-    return get_test_fname('data/Cam_0_20150821161642_833382_TO_Cam_0_20150821161648_253846.mkv')
-
-
-@pytest.fixture
-def filelists_path():
-    return get_test_fname('data/filelists')
-
-
-@pytest.fixture
-def config():
-    saliency_weights = get_test_fname('models/localizer/saliency-weights.hdf5')
-    decoder_weights = get_test_fname('models/decoder/decoder_weights.hdf5')
-    decoder_model = get_test_fname('models/decoder/decoder_architecture.json')
-    for fname in (saliency_weights, decoder_model, decoder_weights):
-        assert os.path.exists(fname), \
-            "Not found {}. Did you forgot to run `./get_test_models.sh`?".format(fname)
-
-    return {
-        'saliency_model_path': saliency_weights,
-        'decoder_model_path': decoder_model,
-        'decoder_weigths_path': decoder_weights,
-    }
-
-
 def test_empty_pipeline():
     pipeline = Pipeline([], [])
     assert(len(pipeline.pipeline) == 0)
 
 
-def test_stages_are_instantiated(config):
-    pipeline = Pipeline([Image], [LocalizerInputImage], **config)
+def test_stages_are_instantiated(pipeline_config):
+    pipeline = Pipeline([Image], [LocalizerInputImage], **pipeline_config)
     assert(all([issubclass(type(stage), PipelineStage) for stage in pipeline.pipeline]))
 
 
@@ -72,8 +35,8 @@ def _assert_types(actual, expected):
         assert(type(actual_type) == expected_type)
 
 
-def test_simple_pipeline(config):
-    pipeline = Pipeline([Filename], [SaliencyImage, Descriptors], **config)
+def test_simple_pipeline(pipeline_config):
+    pipeline = Pipeline([Filename], [SaliencyImage, Descriptors], **pipeline_config)
 
     expected_stages = [ImageReader,
                        LocalizerPreprocessor,
@@ -82,8 +45,8 @@ def test_simple_pipeline(config):
     _assert_types(pipeline.pipeline, expected_stages)
 
 
-def test_imagereader(bees_image, config):
-    pipeline = Pipeline([Filename], [Image, Timestamp, CameraIndex], **config)
+def test_imagereader(bees_image, pipeline_config):
+    pipeline = Pipeline([Filename], [Image, Timestamp, CameraIndex], **pipeline_config)
 
     expected_stages = [ImageReader]
     _assert_types(pipeline.pipeline, expected_stages)
@@ -113,18 +76,8 @@ def test_imagereader(bees_image, config):
     assert(idx == 2)
 
 
-def test_video_generator(bees_video, filelists_path):
-    gen = video_generator(bees_video, filelists_path)
-    results = list(gen)
-    assert(len(results) == 3)
-    prev_ts = 0.
-    for _, _, ts in results:
-        assert(ts > prev_ts)
-        prev_ts = ts
-
-
-def test_localizer(config):
-    pipeline = Pipeline([Filename], [Regions, Candidates], **config)
+def test_localizer(pipeline_config):
+    pipeline = Pipeline([Filename], [Regions, Candidates], **pipeline_config)
 
     expected_stages = [ImageReader,
                        LocalizerPreprocessor,
@@ -150,10 +103,10 @@ def test_localizer(config):
         assert(candidate[1] >= 0 and candidate[1] < 4000)
 
 
-def test_padding(config):
+def test_padding(pipeline_config):
     pipeline = Pipeline([Filename], [PaddedCandidates, Candidates,
                                      PaddedImage, Image],
-                        **config)
+                        **pipeline_config)
 
     fname = os.path.dirname(__file__) + '/data/Cam_2_20150821161530_884267.jpeg'
     outputs = pipeline([fname])
@@ -169,8 +122,8 @@ def test_padding(config):
         assert(all([(pc - offset) == oc for pc, oc in zip(padded, original)]))
 
 
-def test_decoder(config):
-    pipeline = Pipeline([Filename], [Candidates, IDs], **config)
+def test_decoder(pipeline_config):
+    pipeline = Pipeline([Filename], [Candidates, IDs], **pipeline_config)
 
     expected_stages = [ImageReader,
                        LocalizerPreprocessor,
@@ -198,8 +151,8 @@ def test_decoder(config):
         print('Detection at ({}, {}) \t ID: {}'.format(pos[0], pos[1], id))
 
 
-def test_print_config_dict(config):
-    pipeline = Pipeline([Filename], [PipelineResult], **config)
+def test_print_config_dict(pipeline_config):
+    pipeline = Pipeline([Filename], [PipelineResult], **pipeline_config)
     config_dict_str = pipeline._config_dict()
     config_dict = eval(config_dict_str)
     print(config_dict)
@@ -213,7 +166,7 @@ def test_print_config_dict(config):
     assert 'saliency_threshold' in config_dict
 
 
-def test_generator_processor(tmpdir, bees_image, config):
+def test_generator_processor(tmpdir, bees_image, pipeline_config):
     def image_generator():
         ts = time.time()
         data_source = DataSource.new_message(filename='bees.jpeg')
@@ -222,7 +175,7 @@ def test_generator_processor(tmpdir, bees_image, config):
             yield data_source, img, ts + i
 
     repo = Repository(str(tmpdir))
-    pipeline = Pipeline([Image, Timestamp], [PipelineResult], **config)
+    pipeline = Pipeline([Image, Timestamp], [PipelineResult], **pipeline_config)
     gen_processor = GeneratorProcessor(
         pipeline, lambda: BBBinaryRepoSink(repo, camId=2))
 
@@ -241,9 +194,9 @@ def test_generator_processor(tmpdir, bees_image, config):
         last_ts = fc.fromTimestamp
 
 
-def test_generator_processor_video(tmpdir, bees_video, filelists_path, config):
+def test_generator_processor_video(tmpdir, bees_video, filelists_path, pipeline_config):
     repo = Repository(str(tmpdir))
-    pipeline = Pipeline([Image, Timestamp], [PipelineResult], **config)
+    pipeline = Pipeline([Image, Timestamp], [PipelineResult], **pipeline_config)
     gen_processor = GeneratorProcessor(
         pipeline, lambda: BBBinaryRepoSink(repo, camId=0))
 
@@ -267,9 +220,9 @@ def test_generator_processor_video(tmpdir, bees_video, filelists_path, config):
     assert(num_frames == 3)
 
 
-def test_generator_processor_threads(tmpdir, bees_video, filelists_path, config):
+def test_generator_processor_threads(tmpdir, bees_video, filelists_path, pipeline_config):
     repo = Repository(str(tmpdir))
-    pipelines = [Pipeline([Image, Timestamp], [PipelineResult], **config) for
+    pipelines = [Pipeline([Image, Timestamp], [PipelineResult], **pipeline_config) for
                  _ in range(3)]
     gen_processor = GeneratorProcessor(
         pipelines, lambda: BBBinaryRepoSink(repo, camId=0))
