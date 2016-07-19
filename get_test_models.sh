@@ -17,13 +17,16 @@ decoder_model_fname="$decoder_dir/decoder_architecture.json"
 localizer_weights_fname="$localizer_dir/saliency-weights.hdf5"
 
 if [ ! -e "$decoder_weights_fname" ]; then
+    echo "Downloading decoder weights"
     curl -L $decoder_weights > $decoder_weights_fname
 fi
 
 if [ ! -e "$decoder_model_fname" ]; then
+    echo "Downloading decoder model"
     curl -L $decoder_model > $decoder_model_fname
 fi
 
 if [ ! -e "$localizer_weights_fname" ]; then
+    echo "Downloading localizer weights"
     curl -L $localizer_weights > $localizer_weights_fname
 fi
