@@ -3,7 +3,8 @@ import time
 import datetime
 import pytz
 
-from scipy.misc import imread
+from scipy.misc import imread, imsave
+from skimage.color import hsv2rgb
 import numpy as np
 
 import localizer.config
@@ -11,12 +12,12 @@ from pipeline import Pipeline
 from pipeline.pipeline import GeneratorProcessor
 from pipeline.io import BBBinaryRepoSink, video_generator
 from pipeline.stages import Localizer, PipelineStage, ImageReader, \
-    LocalizerPreprocessor, TagSimilarityEncoder, Decoder, DecoderPreprocessor
+    LocalizerPreprocessor, TagSimilarityEncoder, Decoder, DecoderPreprocessor, \
+    ResultCrownVisualizer
 
 from pipeline.objects import Filename, Image, Timestamp, CameraIndex, IDs, \
     PipelineResult, Candidates, Regions, Descriptors, LocalizerInputImage, \
-    SaliencyImage, PaddedCandidates, PaddedImage
-
+    SaliencyImage, PaddedCandidates, PaddedImage, Orientations
 from bb_binary import Repository, DataSource, FrameContainer
 
 
@@ -240,3 +241,30 @@ def test_generator_processor_threads(tmpdir, bees_video, filelists_path, pipelin
             num_frames += len(list(fc.frames))
 
     assert(num_frames == 3)
+
+
+def test_crown_visualiser_on_a_bee(bee_in_the_center_image, outdir):
+    bee_img = imread(bee_in_the_center_image) / 255.
+    vis = ResultCrownVisualizer()
+    bits = np.array([[1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1]], dtype=np.float64)
+    random = 0.45*np.random.random(bits.shape)
+    bits[bits < 0.5] += random[bits < 0.5]
+    bits[bits > 0.5] -= random[bits > 0.5]
+    pos = np.array([(bee_img.shape[0] // 2, bee_img.shape[1] // 2)])
+    z_angle = np.array([[np.radians(170), 0, 0]])
+    overlay, = vis(bee_img, pos, z_angle, bits)
+    img_with_overlay = ResultCrownVisualizer.add_overlay(bee_img, overlay)
+    imsave(str(outdir.join("overlay.png")), hsv2rgb(overlay))
+    imsave(str(outdir.join("crown.png")), img_with_overlay)
+
+
+def test_crown_visualiser_on_a_image(pipeline_results, bees_image, outdir):
+    vis = ResultCrownVisualizer()
+    res = pipeline_results
+    img = res[Image]
+    overlay, = vis(res[Image], res[Candidates], res[Orientations], res[IDs])
+    img_with_overlay = ResultCrownVisualizer.add_overlay(img, overlay)
+
+    name, _ = os.path.splitext(os.path.basename(bees_image))
+    imsave(str(outdir.join(name + "_overlay.png")), hsv2rgb(overlay))
+    imsave(str(outdir.join(name + "_added_overlay.jpeg")), img_with_overlay)

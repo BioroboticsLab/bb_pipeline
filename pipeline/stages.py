@@ -2,9 +2,11 @@
 
 import logging
 
+import cairocffi as cairo
 import cv2
 import numpy as np
 from skimage.io import imread
+from skimage.color import hsv2rgb
 from scipy.ndimage.filters import gaussian_filter1d
 
 import localizer
@@ -20,7 +22,7 @@ from pipeline.objects import DecoderRegions, Filename, Image, Timestamp, \
     CameraIndex, Positions, HivePositions, Orientations, IDs, Saliencies, \
     PipelineResult, Candidates, CandidateOverlay, FinalResultOverlay, \
     Regions, Descriptors, LocalizerInputImage, SaliencyImage, \
-    PaddedImage, PaddedCandidates
+    PaddedImage, PaddedCandidates, CrownOverlay
 
 
 class PipelineStage(object):
@@ -189,6 +191,95 @@ class LocalizerVisualizer(PipelineStage):
         return overlay
 
 
+class ResultCrownVisualizer(PipelineStage):
+    requires = [Image, Candidates, Orientations, IDs]
+    provides = [CrownOverlay]
+
+    def __init__(self, outer_radius=52, inner_radius=32,
+                 orientation_radius=52 + 8,
+                 true_hue=120 / 360., false_hue=240 / 360., orientation_hue=0 / 360.,
+                 **config):
+        self.outer_radius = outer_radius
+        self.inner_radius = inner_radius
+        self.orientation_radius = orientation_radius
+        self.true_hue = true_hue
+        self.false_hue = false_hue
+        self.orientation_hue = orientation_hue
+
+    def call(self, image, candidates, orientations, ids):
+        z_rots = orientations[:, 0]
+        candidates = np.stack([candidates[:, 1], candidates[:, 0]], axis=-1)
+        height, width = image.shape
+        image_surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
+        ctx = cairo.Context(image_surface)
+        ctx.set_antialias(cairo.ANTIALIAS_NONE)
+        for z, pos, id in zip(z_rots, candidates, ids):
+            self._draw_crown(ctx, z, pos, id)
+        image_surface.flush()
+        overlay = np.ndarray(shape=(height, width, 4),
+                             buffer=image_surface.get_data(),
+                             dtype=np.uint8)
+        overlay_hsv = overlay[:, :, :3] / 255.
+        image_surface.finish()
+        return overlay_hsv
+
+    @staticmethod
+    def _hsv(h, s, v):
+        return (v, s, h, 1)
+
+    def _draw_crown(self, ctx: cairo.Context, angle, pos, bits):
+        def x(w):
+            return float(np.cos(w))
+
+        def y(w):
+            return float(np.sin(w))
+
+        def draw_arc(start, end, color, inner, outer):
+            def draw_arc(color):
+                ctx.new_path()
+                ctx.set_source_rgba(*color)
+                ctx.arc(0, 0, inner, start, end)
+                ctx.line_to(outer*x(end), outer*y(end))
+                ctx.arc_negative(0, 0, outer, end, start)
+                ctx.line_to(inner*x(start), inner*y(start))
+                ctx.close_path()
+                ctx.fill()
+            clear_color = (0, 0, 0, 0)
+            draw_arc(clear_color)
+            draw_arc(color)
+
+        def confidence_to_alpha(c):
+            return 2*(c - 0.5)
+
+        ctx.save()
+        ctx.translate(pos[0], pos[1])
+        ctx.rotate(angle)
+        w = 1 / len(bits) * 2 * np.pi
+        for i, bit in enumerate(bits):
+            if bit > 0.5:
+                color = self._hsv(self.true_hue, confidence_to_alpha(bit), 1)
+            else:
+                color = self._hsv(self.false_hue, confidence_to_alpha(1 - bit), 1)
+            draw_arc(w*i, w*(i+1), color, self.inner_radius, self.outer_radius)
+        draw_arc(-np.pi / 2, np.pi / 2, self._hsv(self.orientation_hue, 1, 1),
+                 self.outer_radius, self.orientation_radius)
+        ctx.restore()
+
+    @staticmethod
+    def add_overlay(image, overlay_hsv):
+        height, width = image.shape
+        image_hsv = np.stack([
+            overlay_hsv[:, :, 0],
+            overlay_hsv[:, :, 1],
+            image,
+        ], axis=-1)
+        # TODO: this hsv2rgb conversion is super inefficent! As there are crowns
+        # only on a friction of the total image, one could set the rgb image
+        # to the gray image everywhere. The crowns could then be added with hsv2rgb
+        # for every subwindow.
+        return hsv2rgb(image_hsv)
+
+
 class ResultVisualizer(PipelineStage):
     requires = [CandidateOverlay, Candidates, Orientations, IDs]
     provides = [FinalResultOverlay]
@@ -243,4 +334,5 @@ Stages = (ImageReader,
           ResultMerger,
           TagSimilarityEncoder,
           LocalizerVisualizer,
-          ResultVisualizer)
+          ResultVisualizer,
+          ResultCrownVisualizer)

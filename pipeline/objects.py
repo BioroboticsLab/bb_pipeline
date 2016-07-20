@@ -138,5 +138,9 @@ class CandidateOverlay(NumpyArrayDescription):
     pass
 
 
+class CrownOverlay(NumpyArrayDescription):
+    pass
+
+
 class FinalResultOverlay(NumpyArrayDescription):
     pass
