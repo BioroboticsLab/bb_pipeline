@@ -34,7 +34,7 @@ def process_video(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-        prog='BeesBook deeppipeline',
+        prog='BeesBook pipeline',
         description='Process a video using the beesbook pipeline')
 
     parser.add_argument('video_path', help='path of input video', type=str)

@@ -7,7 +7,7 @@ reqs = [str(ir.req) for ir in install_reqs]
 dep_links = [str(req_line.url) for req_line in install_reqs]
 
 setup(
-    name='deeppipeline',
+    name='bb_pipeline',
     version='0.0.1',
     description='',
     scripts=[pjoin('bin', 'bb_pipeline'),

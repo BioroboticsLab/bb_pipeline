@@ -1,4 +1,4 @@
-Welcome to deeppipeline's documentation!
+Welcome to bb_pipelne's documentation!
 ========================================
 
 .. toctree::
