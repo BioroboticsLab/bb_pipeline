@@ -4,6 +4,8 @@ import datetime
 import pytz
 
 from scipy.misc import imread, imsave
+from scipy.ndimage.interpolation import zoom
+
 from skimage.color import hsv2rgb
 import numpy as np
 
@@ -263,6 +265,8 @@ def test_crown_visualiser_on_a_image(pipeline_results, bees_image, outdir):
     res = pipeline_results
     img = res[Image]
     overlay, = vis(res[Image], res[Candidates], res[Orientations], res[IDs])
+    overlay = zoom(overlay, (0.5, 0.5, 1), order=1)
+    img = zoom(img, 0.5, order=3)
     img_with_overlay = ResultCrownVisualizer.add_overlay(img, overlay)
 
     name, _ = os.path.splitext(os.path.basename(bees_image))
