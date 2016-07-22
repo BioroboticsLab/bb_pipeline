@@ -195,9 +195,10 @@ class ResultCrownVisualizer(PipelineStage):
     requires = [Image, Candidates, Orientations, IDs]
     provides = [CrownOverlay]
 
-    def __init__(self, outer_radius=52, inner_radius=32,
-                 orientation_radius=52 + 8,
+    def __init__(self, outer_radius=60, inner_radius=32,
+                 orientation_radius=72,
                  true_hue=120 / 360., false_hue=240 / 360., orientation_hue=0 / 360.,
+                 line_width=3,
                  **config):
         self.outer_radius = outer_radius
         self.inner_radius = inner_radius
@@ -205,11 +206,14 @@ class ResultCrownVisualizer(PipelineStage):
         self.true_hue = true_hue
         self.false_hue = false_hue
         self.orientation_hue = orientation_hue
+        self.line_width = line_width
 
     def call(self, image, candidates, orientations, ids):
         z_rots = orientations[:, 0]
         candidates = np.stack([candidates[:, 1], candidates[:, 0]], axis=-1)
         height, width = image.shape
+        # hsva
+        # avsh
         image_surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
         ctx = cairo.Context(image_surface)
         ctx.set_antialias(cairo.ANTIALIAS_NONE)
@@ -219,13 +223,13 @@ class ResultCrownVisualizer(PipelineStage):
         overlay = np.ndarray(shape=(height, width, 4),
                              buffer=image_surface.get_data(),
                              dtype=np.uint8)
-        overlay_hsv = overlay[:, :, :3] / 255.
+        overlay_hsva = overlay / 255.
         image_surface.finish()
-        return overlay_hsv
+        return overlay_hsva
 
     @staticmethod
-    def _hsv(h, s, v):
-        return (v, s, h, 1)
+    def _hsv(h, s, v, alpha=0):
+        return (v, s, h, alpha)
 
     def _draw_crown(self, ctx: cairo.Context, angle, pos, bits):
         def x(w):
@@ -234,19 +238,27 @@ class ResultCrownVisualizer(PipelineStage):
         def y(w):
             return float(np.sin(w))
 
-        def draw_arc(start, end, color, inner, outer):
-            def draw_arc(color):
-                ctx.new_path()
-                ctx.set_source_rgba(*color)
-                ctx.arc(0, 0, inner, start, end)
-                ctx.line_to(outer*x(end), outer*y(end))
-                ctx.arc_negative(0, 0, outer, end, start)
-                ctx.line_to(inner*x(start), inner*y(start))
-                ctx.close_path()
-                ctx.fill()
+        def arc_path(start, end, inner, outer):
+            ctx.new_path()
+            ctx.arc(0, 0, inner, start, end)
+            ctx.line_to(outer*x(end), outer*y(end))
+            ctx.arc_negative(0, 0, outer, end, start)
+            ctx.line_to(inner*x(start), inner*y(start))
+            ctx.close_path()
+
+        def fill_arc(start, end, color, inner, outer):
             clear_color = (0, 0, 0, 0)
-            draw_arc(clear_color)
-            draw_arc(color)
+            arc_path(start, end, inner, outer)
+            ctx.set_source_rgba(*clear_color)
+            ctx.fill_preserve()
+            ctx.set_source_rgba(*color)
+            ctx.fill()
+
+        def draw_arc_line(start, end, color, inner, outer):
+            arc_path(start, end, inner, outer)
+            ctx.set_source_rgba(*color)
+            ctx.set_line_width(self.line_width)
+            ctx.stroke()
 
         def confidence_to_alpha(c):
             return 2*(c - 0.5)
@@ -257,20 +269,30 @@ class ResultCrownVisualizer(PipelineStage):
         w = 1 / len(bits) * 2 * np.pi
         for i, bit in enumerate(bits):
             if bit > 0.5:
-                color = self._hsv(self.true_hue, confidence_to_alpha(bit), 1)
+                color = self._hsv(self.true_hue, confidence_to_alpha(bit), 1, 1)
             else:
-                color = self._hsv(self.false_hue, confidence_to_alpha(1 - bit), 1)
-            draw_arc(w*i, w*(i+1), color, self.inner_radius, self.outer_radius)
-        draw_arc(-np.pi / 2, np.pi / 2, self._hsv(self.orientation_hue, 1, 1),
+                color = self._hsv(self.false_hue, confidence_to_alpha(1 - bit), 1, 1)
+            fill_arc(w*i, w*(i+1), color, self.inner_radius, self.outer_radius)
+        fill_arc(-np.pi / 2, np.pi / 2,
+                 self._hsv(self.orientation_hue, 1, 1, 1),
                  self.outer_radius, self.orientation_radius)
+
+        stroke_color = self._hsv(0, 0, 0.5, 1)
+        for i in range(len(bits)):
+            draw_arc_line(w*i, w*(i+1), stroke_color, self.inner_radius, self.outer_radius)
         ctx.restore()
 
     @staticmethod
-    def add_overlay(image, overlay_hsv):
+    def add_overlay(image, overlay_hsva):
         height, width = image.shape
+        # hsva
+        alpha = overlay_hsva[:, :, 3]
+        k = 0.75
+        increase_mask = alpha >= 0.4
+        image[increase_mask] = k*image[increase_mask] + (1 - k)
         image_hsv = np.stack([
-            overlay_hsv[:, :, 0],
-            overlay_hsv[:, :, 1],
+            overlay_hsva[:, :, 0],
+            overlay_hsva[:, :, 1],
             image,
         ], axis=-1)
         # TODO: this hsv2rgb conversion is super inefficent! As there are crowns

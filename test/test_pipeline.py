@@ -256,7 +256,11 @@ def test_crown_visualiser_on_a_bee(bee_in_the_center_image, outdir):
     z_angle = np.array([[np.radians(170), 0, 0]])
     overlay, = vis(bee_img, pos, z_angle, bits)
     img_with_overlay = ResultCrownVisualizer.add_overlay(bee_img, overlay)
-    imsave(str(outdir.join("overlay.png")), hsv2rgb(overlay))
+    imsave(str(outdir.join("overlay.png")), hsv2rgb(overlay[:, :, :3]))
+    imsave(str(outdir.join("overlay_0.png")), overlay[:, :, 0])
+    imsave(str(outdir.join("overlay_1.png")), overlay[:, :, 1])
+    imsave(str(outdir.join("overlay_2.png")), overlay[:, :, 2])
+    imsave(str(outdir.join("overlay_3.png")), overlay[:, :, 3])
     imsave(str(outdir.join("crown.png")), img_with_overlay)
 
 
@@ -270,5 +274,5 @@ def test_crown_visualiser_on_a_image(pipeline_results, bees_image, outdir):
     img_with_overlay = ResultCrownVisualizer.add_overlay(img, overlay)
 
     name, _ = os.path.splitext(os.path.basename(bees_image))
-    imsave(str(outdir.join(name + "_overlay.png")), hsv2rgb(overlay))
+    imsave(str(outdir.join(name + "_overlay.png")), hsv2rgb(overlay[:, :, :3]))
     imsave(str(outdir.join(name + "_added_overlay.jpeg")), img_with_overlay)
