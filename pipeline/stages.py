@@ -12,7 +12,7 @@ from scipy.ndimage.filters import gaussian_filter1d
 import localizer
 import localizer.util
 import localizer.config
-from localizer.visualization import get_roi_overlay
+from localizer.visualization import get_roi_overlay, get_circle_overlay
 from localizer.localizer import Localizer as LocalizerAPI
 from keras.models import model_from_json
 
@@ -186,9 +186,15 @@ class LocalizerVisualizer(PipelineStage):
     requires = [Image, Candidates]
     provides = [CandidateOverlay]
 
+    def __init__(self, roi_overlay='circle'):
+        assert roi_overlay in ('rect', 'circle')
+        self.roi_overlay = roi_overlay
+
     def call(self, image, candidates):
-        overlay = get_roi_overlay(candidates, image / 255.)
-        return overlay
+        if self.roi_overlay == 'rect':
+            return get_roi_overlay(candidates, image / 255.)
+        else:
+            return get_circle_overlay(candidates, image / 255.)
 
 
 class ResultCrownVisualizer(PipelineStage):

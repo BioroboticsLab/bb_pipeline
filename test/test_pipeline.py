@@ -15,7 +15,7 @@ from pipeline.pipeline import GeneratorProcessor
 from pipeline.io import BBBinaryRepoSink, video_generator
 from pipeline.stages import Localizer, PipelineStage, ImageReader, \
     LocalizerPreprocessor, TagSimilarityEncoder, Decoder, DecoderPreprocessor, \
-    ResultCrownVisualizer
+    ResultCrownVisualizer, LocalizerVisualizer
 
 from pipeline.objects import Filename, Image, Timestamp, CameraIndex, IDs, \
     PipelineResult, Candidates, Regions, Descriptors, LocalizerInputImage, \
@@ -264,13 +264,21 @@ def test_crown_visualiser_on_a_bee(bee_in_the_center_image, outdir):
     imsave(str(outdir.join("crown.png")), img_with_overlay)
 
 
+def test_localizer_visualizer(pipeline_results, bees_image, outdir):
+    res = pipeline_results
+    vis = LocalizerVisualizer(roi_overlay='circle')
+    name, _ = os.path.splitext(os.path.basename(bees_image))
+    overlay, = vis(res[Image], res[Candidates])
+    imsave(str(outdir.join(name + "_localizer.png")), overlay)
+
+
 def test_crown_visualiser_on_a_image(pipeline_results, bees_image, outdir):
     vis = ResultCrownVisualizer()
     res = pipeline_results
     img = res[Image]
     overlay, = vis(res[Image], res[Candidates], res[Orientations], res[IDs])
     overlay = zoom(overlay, (0.5, 0.5, 1), order=1)
-    img = zoom(img, 0.5, order=3)
+    img = zoom(img, 0.5, order=3) / 255.
     img_with_overlay = ResultCrownVisualizer.add_overlay(img, overlay)
 
     name, _ = os.path.splitext(os.path.basename(bees_image))

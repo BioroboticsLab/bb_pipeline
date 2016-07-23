@@ -80,7 +80,7 @@ def pipeline_results(pipeline_config, bees_image, outdir):
         with open(str(output_fname), "w+") as f:
             json.dump(to_builtin(outputs), f)
 
-    outputs[Image] = scipy.misc.imread(bees_image) / 255.
+    outputs[Image] = scipy.misc.imread(bees_image)
     return outputs
 
 
