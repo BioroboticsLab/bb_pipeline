@@ -187,8 +187,11 @@ class SaliencyVisualizer(PipelineStage):
     requires = [Image, SaliencyImage]
     provides = [SaliencyOverlay]
 
-    def __init__(self, saliency_visualizer_hue=240 / 360.):
+    def __init__(self, saliency_visualizer_hue=240 / 360.,
+                 saliency_visualizer_gamma=0.25,
+                 ):
         self.hue = saliency_visualizer_hue
+        self.gamma = saliency_visualizer_gamma
 
     def call(self, image, saliency_image):
         img_resize = resize(image, saliency_image.shape)
@@ -198,7 +201,7 @@ class SaliencyVisualizer(PipelineStage):
         print(saliency_norm.max())
         hsv = np.stack([
             self.hue * np.ones_like(saliency_norm),
-            adjust_gamma(saliency_norm, gamma=0.25),
+            adjust_gamma(saliency_norm, gamma=self.gamma),
             img_resize
         ], axis=-1)
         return hsv2rgb(hsv)

@@ -41,6 +41,11 @@ class Pipeline(object):
     def __init__(self, inputs, outputs,
                  available_stages=pipeline.stages.Stages,
                  **config):
+        if len(set(inputs)) != len(inputs):
+            raise Exception("Inputs are not unique: {}".format(inputs))
+        if len(set(outputs)) != len(outputs):
+            raise Exception("Outputs are not unique: {}".format(outputs))
+
         self.inputs = inputs
         self.outputs = outputs
         self.config = config
