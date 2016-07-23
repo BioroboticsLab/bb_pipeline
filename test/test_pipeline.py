@@ -15,7 +15,7 @@ from pipeline.pipeline import GeneratorProcessor
 from pipeline.io import BBBinaryRepoSink, video_generator
 from pipeline.stages import Localizer, PipelineStage, ImageReader, \
     LocalizerPreprocessor, TagSimilarityEncoder, Decoder, DecoderPreprocessor, \
-    ResultCrownVisualizer, LocalizerVisualizer
+    ResultCrownVisualizer, LocalizerVisualizer, SaliencyVisualizer
 
 from pipeline.objects import Filename, Image, Timestamp, CameraIndex, IDs, \
     PipelineResult, Candidates, Regions, Descriptors, LocalizerInputImage, \
@@ -270,6 +270,14 @@ def test_localizer_visualizer(pipeline_results, bees_image, outdir):
     name, _ = os.path.splitext(os.path.basename(bees_image))
     overlay, = vis(res[Image], res[Candidates])
     imsave(str(outdir.join(name + "_localizer.png")), overlay)
+
+
+def test_saliency_visualizer(pipeline_results, bees_image, outdir):
+    res = pipeline_results
+    vis = SaliencyVisualizer()
+    name, _ = os.path.splitext(os.path.basename(bees_image))
+    overlay, = vis(res[Image], res[SaliencyImage])
+    imsave(str(outdir.join(name + "_saliencies.png")), overlay)
 
 
 def test_crown_visualiser_on_a_image(pipeline_results, bees_image, outdir):

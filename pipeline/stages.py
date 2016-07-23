@@ -7,8 +7,9 @@ import cv2
 import numpy as np
 from skimage.io import imread
 from skimage.color import hsv2rgb
+from skimage.transform import resize
+from skimage.exposure import adjust_log, adjust_gamma
 from scipy.ndimage.filters import gaussian_filter1d
-
 import localizer
 import localizer.util
 import localizer.config
@@ -22,7 +23,7 @@ from pipeline.objects import DecoderRegions, Filename, Image, Timestamp, \
     CameraIndex, Positions, HivePositions, Orientations, IDs, Saliencies, \
     PipelineResult, Candidates, CandidateOverlay, FinalResultOverlay, \
     Regions, Descriptors, LocalizerInputImage, SaliencyImage, \
-    PaddedImage, PaddedCandidates, CrownOverlay
+    PaddedImage, PaddedCandidates, CrownOverlay, SaliencyOverlay
 
 
 class PipelineStage(object):
@@ -180,6 +181,27 @@ class ResultMerger(PipelineStage):
 class TagSimilarityEncoder(PipelineStage):
     requires = [Candidates]
     provides = [Descriptors]
+
+
+class SaliencyVisualizer(PipelineStage):
+    requires = [Image, SaliencyImage]
+    provides = [SaliencyOverlay]
+
+    def __init__(self, saliency_visualizer_hue=240 / 360.):
+        self.hue = saliency_visualizer_hue
+
+    def call(self, image, saliency_image):
+        img_resize = resize(image, saliency_image.shape)
+        saliency_range = max(0.15, saliency_image.max() - saliency_image.min())
+        saliency_norm = (saliency_image - saliency_image.min()) / saliency_range
+        print(saliency_norm.min())
+        print(saliency_norm.max())
+        hsv = np.stack([
+            self.hue * np.ones_like(saliency_norm),
+            adjust_gamma(saliency_norm, gamma=0.25),
+            img_resize
+        ], axis=-1)
+        return hsv2rgb(hsv)
 
 
 class LocalizerVisualizer(PipelineStage):

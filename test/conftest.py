@@ -1,13 +1,12 @@
 
 import pytest
 import os
-import json
-import numpy as np
 import scipy.misc
-
+import pickle
 from pipeline import Pipeline
 
-from pipeline.objects import Filename, Candidates, IDs, Saliencies, Orientations, Image
+from pipeline.objects import Filename, Candidates, IDs, Saliencies, Orientations, Image, \
+    SaliencyImage
 
 
 def get_test_fname(name):
@@ -53,34 +52,19 @@ def pipeline_config():
 
 @pytest.fixture
 def pipeline_results(pipeline_config, bees_image, outdir):
-    objs = [Filename, Candidates, IDs, Saliencies, Orientations, Image]
-    objs_dict = {o.__name__: o for o in objs}
-
-    def to_builtin(outputs):
-        def np_to_list(x):
-            if type(x) == np.ndarray:
-                return x.tolist()
-            else:
-                return x
-        return {cls.__name__: np_to_list(o) for cls, o in outputs.items()}
-
-    def to_numpy(outputs):
-        return {objs_dict[name]: np.array(list_arr) for name, list_arr in outputs.items()}
-
     bees_image_name, _ = os.path.splitext(os.path.basename(bees_image))
-    output_fname = outdir.join(bees_image_name + "_pipeline_output.json")
+    output_fname = outdir.join(bees_image_name + "_pipeline_output.pickle")
     if output_fname.exists():
-        with open(str(output_fname)) as f:
-            outputs = to_numpy(json.load(f))
+        with open(str(output_fname), "rb") as f:
+            outputs = pickle.load(f)
     else:
         pipeline = Pipeline([Filename],
-                            [Candidates, IDs, Saliencies, Orientations],
+                            [Candidates, IDs, Saliencies, Orientations, Image,
+                             SaliencyImage],
                             **pipeline_config)
         outputs = pipeline([bees_image])
-        with open(str(output_fname), "w+") as f:
-            json.dump(to_builtin(outputs), f)
-
-    outputs[Image] = scipy.misc.imread(bees_image)
+        with open(str(output_fname), "wb") as f:
+            pickle.dump(outputs, f)
     return outputs
 
 
