@@ -8,7 +8,7 @@ import numpy as np
 from skimage.io import imread
 from skimage.color import hsv2rgb
 from skimage.transform import resize
-from skimage.exposure import adjust_log, adjust_gamma
+from skimage.exposure import adjust_gamma
 from scipy.ndimage.filters import gaussian_filter1d
 import localizer
 import localizer.util

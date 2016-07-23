@@ -1,7 +1,6 @@
 
 import pytest
 import os
-import scipy.misc
 import pickle
 from pipeline import Pipeline
 
