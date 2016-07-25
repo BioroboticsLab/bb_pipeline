@@ -188,8 +188,7 @@ class SaliencyVisualizer(PipelineStage):
     provides = [SaliencyOverlay]
 
     def __init__(self, saliency_visualizer_hue=240 / 360.,
-                 saliency_visualizer_gamma=0.2,
-                 ):
+                 saliency_visualizer_gamma=0.2, **config):
         self.hue = saliency_visualizer_hue
         self.gamma = saliency_visualizer_gamma
 
