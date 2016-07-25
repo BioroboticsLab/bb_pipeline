@@ -6,7 +6,7 @@ import cairocffi as cairo
 import cv2
 import numpy as np
 from skimage.io import imread
-from skimage.color import hsv2rgb, rgb2hsv
+from skimage.color import hsv2rgb, rgb2hsv, gray2rgb
 from skimage.transform import resize
 from skimage.exposure import adjust_gamma
 from scipy.ndimage.filters import gaussian_filter1d
@@ -260,8 +260,9 @@ class ResultCrownVisualizer(PipelineStage):
         return overlay_hsva
 
     @staticmethod
-    def _hsv(h, s, v, alpha=0):
-        return (v, s, h, alpha)
+    def _hsv2rgba(h, s, v, alpha=0):
+        r, g, b = hsv2rgb(np.array([[[h, s, v]]])).flatten().tolist()
+        return (b, g, r, alpha)
 
     def _draw_crown(self, ctx: cairo.Context, angle, pos, bits):
         def x(w):
@@ -301,37 +302,25 @@ class ResultCrownVisualizer(PipelineStage):
         w = 1 / len(bits) * 2 * np.pi
         for i, bit in enumerate(bits):
             if bit > 0.5:
-                color = self._hsv(self.true_hue, confidence_to_alpha(bit), 1, 1)
+                color = self._hsv2rgba(self.true_hue, confidence_to_alpha(bit), 1, 1)
             else:
-                color = self._hsv(self.false_hue, confidence_to_alpha(1 - bit), 1, 1)
+                color = self._hsv2rgba(self.false_hue, confidence_to_alpha(1 - bit), 1, 1)
             fill_arc(w*i, w*(i+1), color, self.inner_radius, self.outer_radius)
         fill_arc(-np.pi / 2, np.pi / 2,
-                 self._hsv(self.orientation_hue, 1, 1, 1),
+                 self._hsv2rgba(self.orientation_hue, 1, 1, 1),
                  self.outer_radius, self.orientation_radius)
 
-        stroke_color = self._hsv(0, 0, 0.5, 1)
+        stroke_color = self._hsv2rgba(0, 0, 0.5, 1)
         for i in range(len(bits)):
             draw_arc_line(w*i, w*(i+1), stroke_color, self.inner_radius, self.outer_radius)
         ctx.restore()
 
     @staticmethod
-    def add_overlay(image, overlay_hsva):
+    def add_overlay(image, overlay):
         height, width = image.shape
-        # hsva
-        alpha = overlay_hsva[:, :, 3]
-        k = 0.75
-        increase_mask = alpha >= 0.4
-        image[increase_mask] = k*image[increase_mask] + (1 - k)
-        image_hsv = np.stack([
-            overlay_hsva[:, :, 0],
-            overlay_hsva[:, :, 1],
-            image,
-        ], axis=-1)
-        # TODO: this hsv2rgb conversion is super inefficent! As there are crowns
-        # only on a friction of the total image, one could set the rgb image
-        # to the gray image everywhere. The crowns could then be added with hsv2rgb
-        # for every subwindow.
-        return hsv2rgb(image_hsv)
+        alpha = overlay[:, :, 3, np.newaxis]
+        image_rgb = gray2rgb(image) * (1 - alpha) + alpha * overlay[:, :, :3]
+        return image_rgb
 
 
 class ResultVisualizer(PipelineStage):
