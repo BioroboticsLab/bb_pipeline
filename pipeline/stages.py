@@ -6,7 +6,7 @@ import cairocffi as cairo
 import cv2
 import numpy as np
 from skimage.io import imread
-from skimage.color import hsv2rgb
+from skimage.color import hsv2rgb, rgb2hsv
 from skimage.transform import resize
 from skimage.exposure import adjust_gamma
 from scipy.ndimage.filters import gaussian_filter1d
@@ -16,7 +16,7 @@ import localizer.config
 from localizer.visualization import get_roi_overlay, get_circle_overlay
 from localizer.localizer import Localizer as LocalizerAPI
 from keras.models import model_from_json
-
+import matplotlib
 from bb_binary import parse_image_fname
 
 from pipeline.objects import DecoderRegions, Filename, Image, Timestamp, \
@@ -188,8 +188,8 @@ class SaliencyVisualizer(PipelineStage):
     provides = [SaliencyOverlay]
 
     def __init__(self, saliency_visualizer_hue=240 / 360.,
-                 saliency_visualizer_gamma=0.25,
-                 **config):
+                 saliency_visualizer_gamma=0.2,
+                 ):
         self.hue = saliency_visualizer_hue
         self.gamma = saliency_visualizer_gamma
 
@@ -197,9 +197,12 @@ class SaliencyVisualizer(PipelineStage):
         img_resize = resize(image, saliency_image.shape)
         saliency_range = max(0.15, saliency_image.max() - saliency_image.min())
         saliency_norm = (saliency_image - saliency_image.min()) / saliency_range
+        saliency_gamma = adjust_gamma(saliency_norm, gamma=self.gamma)
+        cmap = matplotlib.cm.get_cmap('viridis')
+        cmap_hsv = rgb2hsv(cmap(saliency_gamma)[:, :, :3])
         hsv = np.stack([
-            self.hue * np.ones_like(saliency_norm),
-            adjust_gamma(saliency_norm, gamma=self.gamma),
+            cmap_hsv[:, :, 0],
+            saliency_gamma,
             img_resize
         ], axis=-1)
         return hsv2rgb(hsv)
