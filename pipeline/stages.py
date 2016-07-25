@@ -386,4 +386,5 @@ Stages = (ImageReader,
           TagSimilarityEncoder,
           LocalizerVisualizer,
           ResultVisualizer,
-          ResultCrownVisualizer)
+          ResultCrownVisualizer,
+          SaliencyVisualizer)
