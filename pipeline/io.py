@@ -38,8 +38,9 @@ class Sink:
 def unique_id():
     hasher = hashlib.sha1()
     hasher.update(uuid.uuid4().bytes)
+    hash = int.from_bytes(hasher.digest(), byteorder='big')
     # strip to 64 bits
-    hash = int.from_bytes(hasher.digest(), byteorder='big') >> 95
+    hash = hash >> (hash.bit_length() - 64)
     return hash
 
 
