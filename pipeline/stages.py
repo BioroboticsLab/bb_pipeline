@@ -211,7 +211,7 @@ class LocalizerVisualizer(PipelineStage):
     requires = [Image, Candidates]
     provides = [CandidateOverlay]
 
-    def __init__(self, roi_overlay='circle'):
+    def __init__(self, roi_overlay='circle', **config):
         assert roi_overlay in ('rect', 'circle')
         self.roi_overlay = roi_overlay
 
