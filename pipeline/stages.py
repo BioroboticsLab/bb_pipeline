@@ -197,8 +197,6 @@ class SaliencyVisualizer(PipelineStage):
         img_resize = resize(image, saliency_image.shape)
         saliency_range = max(0.15, saliency_image.max() - saliency_image.min())
         saliency_norm = (saliency_image - saliency_image.min()) / saliency_range
-        print(saliency_norm.min())
-        print(saliency_norm.max())
         hsv = np.stack([
             self.hue * np.ones_like(saliency_norm),
             adjust_gamma(saliency_norm, gamma=self.gamma),
