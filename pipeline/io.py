@@ -1,6 +1,8 @@
 import av
+import hashlib
 from datetime import datetime
 from itertools import chain
+import uuid
 import pytz
 import os
 from bb_binary import DataSource, FrameContainer, \
@@ -34,8 +36,11 @@ class Sink:
 
 
 def unique_id():
-    # TODO: Generate unique id
-    return 0
+    hasher = hashlib.sha1()
+    hasher.update(uuid.uuid4().bytes)
+    # strip to 64 bits
+    hash = int.from_bytes(hasher.digest(), byteorder='big') >> 95
+    return hash
 
 
 class BBBinaryRepoSink(Sink):
