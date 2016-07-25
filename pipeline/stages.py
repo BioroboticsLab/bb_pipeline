@@ -30,7 +30,7 @@ class PipelineStage(object):
     requires = []
     provides = []
 
-    def __init__(self, **config):
+    def __init__(self):
         pass
 
     def __call__(self, *inputs):
@@ -72,8 +72,7 @@ class LocalizerPreprocessor(PipelineStage):
     def __init__(self,
                  clahe_clip_limit=2,
                  clahe_tile_width=64,
-                 clahe_tile_heigth=64,
-                 **config):
+                 clahe_tile_heigth=64):
         self.clahe = cv2.createCLAHE(clahe_clip_limit, (clahe_tile_width, clahe_tile_heigth))
 
     @staticmethod
@@ -89,14 +88,11 @@ class Localizer(PipelineStage):
     requires = [LocalizerInputImage]
     provides = [Regions, SaliencyImage, Saliencies, Candidates, PaddedCandidates]
 
-    def __init__(self,
-                 saliency_model_path,
-                 saliency_threshold=0.5,
-                 **config):
-        self.saliency_threshold = saliency_threshold
+    def __init__(self, model_path, threshold=0.5):
+        self.saliency_threshold = threshold
         self.localizer = LocalizerAPI()
         self.localizer.logger.setLevel(logging.WARNING)
-        self.localizer.load_weights(saliency_model_path)
+        self.localizer.load_weights(model_path)
         self.localizer.compile()
 
     def call(self, image):
@@ -134,9 +130,9 @@ class Decoder(PipelineStage):
     requires = [DecoderRegions, Candidates]
     provides = [Positions, Orientations, IDs]
 
-    def __init__(self, decoder_model_path, decoder_weigths_path, **config):
-        self.model = model_from_json(open(decoder_model_path).read())
-        self.model.load_weights(decoder_weigths_path)
+    def __init__(self, model_path, weights_path):
+        self.model = model_from_json(open(model_path).read())
+        self.model.load_weights(weights_path)
         # We can't use model.compile because it requires an optimizer and a loss function.
         # Since we only use the model for inference, we call the private function
         # _make_predict_function(). This is exactly what keras would do otherwise the first
@@ -187,10 +183,9 @@ class SaliencyVisualizer(PipelineStage):
     requires = [Image, SaliencyImage]
     provides = [SaliencyOverlay]
 
-    def __init__(self, saliency_visualizer_hue=240 / 360.,
-                 saliency_visualizer_gamma=0.2, **config):
-        self.hue = saliency_visualizer_hue
-        self.gamma = saliency_visualizer_gamma
+    def __init__(self, hue=240 / 360., gamma=0.2):
+        self.hue = hue
+        self.gamma = gamma
 
     def call(self, image, saliency_image):
         img_resize = resize(image, saliency_image.shape)
@@ -211,7 +206,7 @@ class LocalizerVisualizer(PipelineStage):
     requires = [Image, Candidates]
     provides = [CandidateOverlay]
 
-    def __init__(self, roi_overlay='circle', **config):
+    def __init__(self, roi_overlay='circle'):
         assert roi_overlay in ('rect', 'circle')
         self.roi_overlay = roi_overlay
 
@@ -229,8 +224,7 @@ class ResultCrownVisualizer(PipelineStage):
     def __init__(self, outer_radius=60, inner_radius=32,
                  orientation_radius=72,
                  true_hue=120 / 360., false_hue=240 / 360., orientation_hue=0 / 360.,
-                 line_width=3,
-                 **config):
+                 line_width=3):
         self.outer_radius = outer_radius
         self.inner_radius = inner_radius
         self.orientation_radius = orientation_radius
@@ -328,42 +322,27 @@ class ResultVisualizer(PipelineStage):
 
     @staticmethod
     def draw_arrow(overlay, z_rotation, position,
-                   vis_line_width,
-                   vis_arrow_length,
-                   vis_arrow_color):
-        x_to = np.round(position[0] + vis_arrow_length * np.cos(z_rotation)).astype(np.int32)
-        y_to = np.round(position[1] + vis_arrow_length * np.sin(z_rotation)).astype(np.int32)
+                   line_width,
+                   arrow_length,
+                   arrow_color):
+        x_to = np.round(position[0] + arrow_length * np.cos(z_rotation)).astype(np.int32)
+        y_to = np.round(position[1] + arrow_length * np.sin(z_rotation)).astype(np.int32)
         cv2.arrowedLine(overlay, tuple(position), (x_to, y_to),
-                        vis_arrow_color, vis_line_width, cv2.LINE_AA)
-
-    @staticmethod
-    def draw_text(overlay, ids, position,
-                  vis_text_color,
-                  vis_text_line_width,
-                  vis_text_offset,
-                  vis_font_size):
-        ids = ''.join([str(int(np.round(c))) for c in list(ids)])
-        cv2.putText(overlay, ids, tuple(position + np.array(vis_text_offset)),
-                    cv2.FONT_HERSHEY_TRIPLEX, vis_font_size,
-                    vis_text_color, vis_text_line_width, cv2.LINE_AA)
+                        arrow_color, line_width, cv2.LINE_AA)
 
     def call(self, overlay, candidates, orientations, ids,
-             vis_arrow_length=150,
-             vis_line_width=6,
-             vis_font_size=1.5,
-             vis_text_color=(0, 0, 0),
-             vis_text_line_width=4,
-             vis_text_offset=(-180, -60),
-             vis_arrow_color=(255, 0, 0),
-             **config):
+             arrow_length=150,
+             line_width=6,
+             font_size=1.5,
+             text_color=(0, 0, 0),
+             text_line_width=4,
+             text_offset=(-180, -60),
+             arrow_color=(255, 0, 0)):
         overlay = (np.copy(overlay) * 255).astype(np.uint8)
         for idx in range(len(candidates)):
             pos = candidates[idx, ::-1].astype(np.int32)
-            ResultVisualizer.draw_text(overlay, ids[idx], pos,
-                                       vis_text_color, vis_text_line_width,
-                                       vis_text_offset, vis_font_size)
             ResultVisualizer.draw_arrow(overlay, orientations[idx, 0], pos,
-                                        vis_line_width, vis_arrow_length, vis_arrow_color)
+                                        line_width, arrow_length, arrow_color)
         return overlay
 
 

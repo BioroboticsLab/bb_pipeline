@@ -43,9 +43,13 @@ def pipeline_config():
             "Not found {}. Did you forgot to run `./get_test_models.sh`?".format(fname)
 
     return {
-        'saliency_model_path': saliency_weights,
-        'decoder_model_path': decoder_model,
-        'decoder_weigths_path': decoder_weights,
+        'Localizer': {
+            'model_path': saliency_weights,
+        },
+        'Decoder': {
+            'model_path': decoder_model,
+            'weights_path': decoder_weights,
+        }
     }
 
 

@@ -153,19 +153,15 @@ def test_decoder(pipeline_config):
         print('Detection at ({}, {}) \t ID: {}'.format(pos[0], pos[1], id))
 
 
-def test_print_config_dict(pipeline_config):
+def test_config_dict(pipeline_config):
     pipeline = Pipeline([Filename], [PipelineResult], **pipeline_config)
-    config_dict_str = pipeline._config_dict()
-    config_dict = eval(config_dict_str)
+    config_dict = pipeline.get_config()
     print(config_dict)
-    assert 'decoder_model_path' in config_dict
-    assert config_dict['decoder_model_path'] == 'REQUIRED'
-    assert config_dict['decoder_weigths_path'] == 'REQUIRED'
-    assert config_dict['saliency_model_path'] == 'REQUIRED'
-    assert 'clahe_tile_heigth' in config_dict
-    assert 'clahe_tile_width' in config_dict
-    assert 'clahe_clip_limit' in config_dict
-    assert 'saliency_threshold' in config_dict
+    assert('Localizer' in config_dict)
+    assert('Decoder' in config_dict)
+    assert(config_dict['Localizer']['model_path'] == 'REQUIRED')
+    assert(config_dict['Decoder']['model_path'] == 'REQUIRED')
+    assert(config_dict['Decoder']['weights_path'] == 'REQUIRED')
 
 
 def test_generator_processor(tmpdir, bees_image, pipeline_config):
