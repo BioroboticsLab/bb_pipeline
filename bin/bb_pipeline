@@ -13,10 +13,14 @@ from bb_binary import Repository, parse_video_fname
 
 def process_video(args):
     config = {
-        'saliency_model_path': args.saliency_weight_path,
-        'decoder_model_path': args.decoder_model_path,
-        'decoder_weigths_path': args.decoder_weight_path,
-        'saliency_threshold': args.saliency_threshold
+        'Decoder': {
+            'weights_path': args.decoder_weight_path,
+            'model_path': args.decoder_model_path
+        },
+        'Localizer': {
+            'threshold': args.saliency_threshold,
+            'model_path': args.saliency_weight_path
+        }
     }
 
     logger.info('Initializing {} pipeline(s)'.format(args.num_threads))
