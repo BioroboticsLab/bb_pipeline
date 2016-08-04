@@ -38,7 +38,10 @@ def pipeline_config():
     saliency_weights = get_test_fname('models/localizer/saliency-weights.hdf5')
     decoder_weights = get_test_fname('models/decoder/decoder_weights.hdf5')
     decoder_model = get_test_fname('models/decoder/decoder_architecture.json')
-    for fname in (saliency_weights, decoder_model, decoder_weights):
+    tagSimilarityEncoder_model = get_test_fname('models/tagSimilarityEncoder/tagSimilarityEncoder_architecture.json')
+    tagSimilarityEncoder_weights = get_test_fname('models/tagSimilarityEncoder/tagSimilarityEncoder_weights.h5')
+
+    for fname in (saliency_weights, decoder_model, decoder_weights, tagSimilarityEncoder_model, tagSimilarityEncoder_weights):
         assert os.path.exists(fname), \
             "Not found {}. Did you forgot to run `./get_test_models.sh`?".format(fname)
 
@@ -49,6 +52,10 @@ def pipeline_config():
         'Decoder': {
             'model_path': decoder_model,
             'weights_path': decoder_weights,
+        },
+        'TagSimilarityEncoder': {
+            'model_path': tagSimilarityEncoder_model,
+            'weights_path': tagSimilarityEncoder_weights
         }
     }
 

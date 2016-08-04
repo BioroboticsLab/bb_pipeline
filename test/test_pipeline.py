@@ -153,6 +153,15 @@ def test_decoder(pipeline_config):
         print('Detection at ({}, {}) \t ID: {}'.format(pos[0], pos[1], id))
 
 
+def test_tagSimilarityEncoder(pipeline_config):
+    pipeline = Pipeline([Filename], [Descriptors], **pipeline_config)
+    fname = os.path.dirname(__file__) + '/data/Cam_2_20150821161530_884267.jpeg'
+
+    outputs = pipeline([fname])
+    assert Descriptors in outputs
+    assert len(outputs[Descriptors]) == 49
+
+
 def test_config_dict(pipeline_config):
     pipeline = Pipeline([Filename], [PipelineResult], **pipeline_config)
     config_dict = pipeline.get_config()
