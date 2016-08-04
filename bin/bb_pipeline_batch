@@ -11,7 +11,7 @@ from pipeline.cmdline import logger, get_shared_positional_arguments, get_shared
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(
-        prog='BeesBook deeppipeline batch processor',
+        prog='BeesBook pipeline batch processor',
         description='Batch process video using the beesbook pipeline')
 
     parser.add_argument('video_root_path', help='root path of input videos', type=str)

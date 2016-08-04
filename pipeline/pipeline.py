@@ -1,5 +1,6 @@
 from joblib import Parallel, delayed
 import pipeline.stages
+from collections import defaultdict
 import inspect
 from inspect import Parameter
 
@@ -41,28 +42,31 @@ class Pipeline(object):
     def __init__(self, inputs, outputs,
                  available_stages=pipeline.stages.Stages,
                  **config):
+        if len(set(inputs)) != len(inputs):
+            raise Exception("Inputs are not unique: {}".format(inputs))
+        if len(set(outputs)) != len(outputs):
+            raise Exception("Outputs are not unique: {}".format(outputs))
+
         self.inputs = inputs
         self.outputs = outputs
-        self.config = config
+        self.config_dict = config
         self.available_stages = available_stages
-        self.required_stages = self._required_stages()
-        if config.get('print_config', False):
-            self._print_config()
-        if config.get('print_config_dict', False):
-            print(self._config_dict())
+        self.required_stages = Pipeline.required_stages(self.inputs, self.outputs,
+                                                        self.available_stages)
         self.stages = [self._instantiate_stage(s) for s in self.required_stages]
         self.pipeline = self._build_pipeline(self.stages)
 
-    def _required_stages(self):
+    @staticmethod
+    def required_stages(input_stages, output_stages, available_stages=pipeline.stages.Stages):
         added_stages = set()
-        requirements = set(self.outputs)
+        requirements = set(output_stages)
         while len(requirements) > 0:
             req = requirements.pop()
-            if req in self.inputs:
+            if req in input_stages:
                 continue
 
             req_fulfilled = False
-            for stage in self.available_stages:
+            for stage in available_stages:
                 if req in stage.provides:
 
                     for stage_req in stage.requires:
@@ -80,6 +84,23 @@ class Pipeline(object):
         return added_stages
 
     @staticmethod
+    def config(required_stages, only_required=True):
+        config = defaultdict(dict)
+        for stage in required_stages:
+            sig = inspect.signature(stage)
+            for name, param in sig.parameters.items():
+                if name == 'self':
+                    continue
+                if param.default == Parameter.empty:
+                    config[stage.__name__][name] = 'REQUIRED'
+                elif not only_required:
+                    config[stage.__name__][name] = param.default
+        return config
+
+    def get_config(self, only_required=True):
+        return Pipeline.config(self.required_stages, only_required)
+
+    @staticmethod
     def _get_config_parameter_line(name, param, default_pos=30):
         def get_annotation_as_str(param):
             if param.annotation != Parameter.empty:
@@ -93,75 +114,33 @@ class Pipeline(object):
                 return " ({})".format(anno_str)
             else:
                 return ""
+
         ss_line = "    {}{}:".format(name, get_annotation_as_str(param))
 
         ss_line += " " * (default_pos - len(ss_line))
         if param.default != Parameter.empty:
             ss_line += "     {}".format(param.default)
+
         return ss_line
-
-    def _print_config(self):
-        required_config = []
-        for stage in self.required_stages:
-            ss = "{}:\n".format(stage.__name__)
-            sig = inspect.signature(stage)
-            has_params = False
-
-            for name, param in sig.parameters.items():
-                if name in ['self', 'config']:
-                    continue
-                has_params = True
-                if param.default == Parameter.empty:
-                    required_config.append((name, param))
-                ss += self._get_config_parameter_line(name, param) + "\n"
-
-            if has_params:
-                print(ss)
-        if required_config:
-            print("Required:")
-            for name, param in required_config:
-                print(self._get_config_parameter_line(name, param))
-
-    def _config_dict(self):
-        def get_default(param):
-            if param.default == Parameter.empty:
-                return "'REQUIRED'"
-            else:
-                value = param.default
-                if type(value) == str:
-                    return "'{}'".format(value)
-                else:
-                    return str(value)
-
-        required_config = []
-        s = "{\n"
-        for stage in self.required_stages:
-            ss = "    # {}\n".format(stage.__name__)
-            sig = inspect.signature(stage)
-            has_params = False
-            for name, param in sig.parameters.items():
-                if name in ['self', 'config']:
-                    continue
-                has_params = True
-                if param.default == Parameter.empty:
-                    required_config.append((name, param))
-                ss += "    '{}': {},\n".format(name, get_default(param))
-            if has_params:
-                s += ss
-        s += "}"
-        return s
 
     def _instantiate_stage(self, stage):
         try:
-            return stage(**self.config)
+            if stage.__name__ in self.config_dict:
+                return stage(**self.config_dict[stage.__name__])
+            else:
+                return stage()
         except TypeError:
+            if stage.__name__ not in self.config_dict:
+                raise KeyError(
+                    "No config for stage {} set.\n".format(stage.__name__))
+            stage_config = self.config_dict[stage.__name__]
             sig = inspect.signature(stage)
             missing_configs = []
             for name, param in sig.parameters.items():
-                if name in ['self', 'config']:
+                if name == 'self':
                     continue
                 if (param.default == Parameter.empty and
-                        name not in self.config):
+                        name not in stage_config):
                     missing_configs.append(name)
 
             assert missing_configs

@@ -1,6 +1,11 @@
 
 import pytest
 import os
+import pickle
+from pipeline import Pipeline
+
+from pipeline.objects import Filename, Candidates, IDs, Saliencies, Orientations, Image, \
+    SaliencyImage
 
 
 def get_test_fname(name):
@@ -11,6 +16,11 @@ def get_test_fname(name):
 @pytest.fixture
 def bees_image():
     return get_test_fname('data/Cam_2_20150821161530_884267.jpeg')
+
+
+@pytest.fixture
+def bee_in_the_center_image():
+    return get_test_fname('data/a_bee_in_the_center.jpeg')
 
 
 @pytest.fixture
@@ -33,7 +43,38 @@ def pipeline_config():
             "Not found {}. Did you forgot to run `./get_test_models.sh`?".format(fname)
 
     return {
-        'saliency_model_path': saliency_weights,
-        'decoder_model_path': decoder_model,
-        'decoder_weigths_path': decoder_weights,
+        'Localizer': {
+            'model_path': saliency_weights,
+        },
+        'Decoder': {
+            'model_path': decoder_model,
+            'weights_path': decoder_weights,
+        }
     }
+
+
+@pytest.fixture
+def pipeline_results(pipeline_config, bees_image, outdir):
+    bees_image_name, _ = os.path.splitext(os.path.basename(bees_image))
+    output_fname = outdir.join(bees_image_name + "_pipeline_output.pickle")
+    if output_fname.exists():
+        with open(str(output_fname), "rb") as f:
+            outputs = pickle.load(f)
+    else:
+        pipeline = Pipeline([Filename],
+                            [Candidates, IDs, Saliencies, Orientations, Image,
+                             SaliencyImage],
+                            **pipeline_config)
+        outputs = pipeline([bees_image])
+        with open(str(output_fname), "wb") as f:
+            pickle.dump(outputs, f)
+    return outputs
+
+
+@pytest.fixture
+def outdir():
+    from py.path import local
+    path = local("test").join("out")
+    if not path.ensure(dir=True):
+        path.mkdir()
+    return path

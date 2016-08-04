@@ -3,7 +3,9 @@ import time
 import datetime
 import pytz
 
-from scipy.misc import imread
+from scipy.misc import imread, imsave
+from scipy.ndimage.interpolation import zoom
+
 import numpy as np
 
 import localizer.config
@@ -11,12 +13,12 @@ from pipeline import Pipeline
 from pipeline.pipeline import GeneratorProcessor
 from pipeline.io import BBBinaryRepoSink, video_generator
 from pipeline.stages import Localizer, PipelineStage, ImageReader, \
-    LocalizerPreprocessor, TagSimilarityEncoder, Decoder, DecoderPreprocessor
+    LocalizerPreprocessor, TagSimilarityEncoder, Decoder, DecoderPreprocessor, \
+    ResultCrownVisualizer, LocalizerVisualizer, SaliencyVisualizer
 
 from pipeline.objects import Filename, Image, Timestamp, CameraIndex, IDs, \
     PipelineResult, Candidates, Regions, Descriptors, LocalizerInputImage, \
-    SaliencyImage, PaddedCandidates, PaddedImage
-
+    SaliencyImage, PaddedCandidates, PaddedImage, Orientations
 from bb_binary import Repository, DataSource, FrameContainer
 
 
@@ -151,19 +153,15 @@ def test_decoder(pipeline_config):
         print('Detection at ({}, {}) \t ID: {}'.format(pos[0], pos[1], id))
 
 
-def test_print_config_dict(pipeline_config):
+def test_config_dict(pipeline_config):
     pipeline = Pipeline([Filename], [PipelineResult], **pipeline_config)
-    config_dict_str = pipeline._config_dict()
-    config_dict = eval(config_dict_str)
+    config_dict = pipeline.get_config()
     print(config_dict)
-    assert 'decoder_model_path' in config_dict
-    assert config_dict['decoder_model_path'] == 'REQUIRED'
-    assert config_dict['decoder_weigths_path'] == 'REQUIRED'
-    assert config_dict['saliency_model_path'] == 'REQUIRED'
-    assert 'clahe_tile_heigth' in config_dict
-    assert 'clahe_tile_width' in config_dict
-    assert 'clahe_clip_limit' in config_dict
-    assert 'saliency_threshold' in config_dict
+    assert('Localizer' in config_dict)
+    assert('Decoder' in config_dict)
+    assert(config_dict['Localizer']['model_path'] == 'REQUIRED')
+    assert(config_dict['Decoder']['model_path'] == 'REQUIRED')
+    assert(config_dict['Decoder']['weights_path'] == 'REQUIRED')
 
 
 def test_generator_processor(tmpdir, bees_image, pipeline_config):
@@ -240,3 +238,52 @@ def test_generator_processor_threads(tmpdir, bees_video, filelists_path, pipelin
             num_frames += len(list(fc.frames))
 
     assert(num_frames == 3)
+
+
+def test_crown_visualiser_on_a_bee(bee_in_the_center_image, outdir):
+    bee_img = imread(bee_in_the_center_image) / 255.
+    vis = ResultCrownVisualizer()
+    bits = np.array([[1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1]], dtype=np.float64)
+    random = 0.45*np.random.random(bits.shape)
+    bits[bits < 0.5] += random[bits < 0.5]
+    bits[bits > 0.5] -= random[bits > 0.5]
+    pos = np.array([(bee_img.shape[0] // 2, bee_img.shape[1] // 2)])
+    z_angle = np.array([[np.radians(170), 0, 0]])
+    overlay, = vis(bee_img, pos, z_angle, bits)
+    img_with_overlay = ResultCrownVisualizer.add_overlay(bee_img, overlay)
+    imsave(str(outdir.join("overlay.png")), overlay)
+    imsave(str(outdir.join("overlay_0.png")), overlay[:, :, 0])
+    imsave(str(outdir.join("overlay_1.png")), overlay[:, :, 1])
+    imsave(str(outdir.join("overlay_2.png")), overlay[:, :, 2])
+    imsave(str(outdir.join("overlay_3.png")), overlay[:, :, 3])
+    imsave(str(outdir.join("crown.png")), img_with_overlay)
+
+
+def test_localizer_visualizer(pipeline_results, bees_image, outdir):
+    res = pipeline_results
+    vis = LocalizerVisualizer(roi_overlay='circle')
+    name, _ = os.path.splitext(os.path.basename(bees_image))
+    overlay, = vis(res[Image], res[Candidates])
+    imsave(str(outdir.join(name + "_localizer.png")), overlay)
+
+
+def test_saliency_visualizer(pipeline_results, bees_image, outdir):
+    res = pipeline_results
+    vis = SaliencyVisualizer()
+    name, _ = os.path.splitext(os.path.basename(bees_image))
+    overlay, = vis(res[Image], res[SaliencyImage])
+    imsave(str(outdir.join(name + "_saliencies.png")), overlay)
+
+
+def test_crown_visualiser_on_a_image(pipeline_results, bees_image, outdir):
+    vis = ResultCrownVisualizer()
+    res = pipeline_results
+    img = res[Image]
+    overlay, = vis(res[Image], res[Candidates], res[Orientations], res[IDs])
+    overlay = zoom(overlay, (0.5, 0.5, 1), order=1)
+    img = zoom(img, 0.5, order=3) / 255.
+    img_with_overlay = ResultCrownVisualizer.add_overlay(img, overlay)
+
+    name, _ = os.path.splitext(os.path.basename(bees_image))
+    imsave(str(outdir.join(name + "_overlay.png")), overlay)
+    imsave(str(outdir.join(name + "_added_overlay.jpeg")), img_with_overlay)
