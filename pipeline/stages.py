@@ -198,7 +198,7 @@ class TagSimilarityEncoder(PipelineStage):
         #crop images to match input shape of model
         _,_,lx,ly = regions.shape
         _,_,mx,my = self.model.input_shape
-        regions = regions[:,:,lx/2 - mx/2 : lx/2 + mx/2,  ly/2 - my/2 : ly/2 + my/2]
+        regions = regions[:,:,int(lx/2) - int(mx/2) : int(lx/2) + int(mx/2),  int(ly/2) - int(my/2) : int(ly/2) + int(my/2)]
 
         predictions = self.model.predict(regions)
         #thresholding predictions
