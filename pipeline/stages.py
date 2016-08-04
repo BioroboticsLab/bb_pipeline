@@ -178,9 +178,9 @@ class TagSimilarityEncoder(PipelineStage):
     requires = [Regions]
     provides = [Descriptors]
 
-    def __init__(self, tagSimilarityEncoder_model_path, tagSimilarityEncoder_weights_path, **config):
-        self.model = model_from_json(open(tagSimilarityEncoder_model_path).read())
-        self.model.load_weights(tagSimilarityEncoder_weights_path)
+    def __init__(self, **config):
+        self.model = model_from_json(open(config['model_path']).read())
+        self.model.load_weights(config['weights_path'])
         # We can't use model.compile because it requires an optimizer and a loss function.
         # Since we only use the model for inference, we call the private function
         # _make_predict_function(). This is exactly what keras would do otherwise the first
