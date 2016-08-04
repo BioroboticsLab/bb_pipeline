@@ -36,6 +36,11 @@ if [ ! -e "$localizer_weights_fname" ]; then
     curl -L $localizer_weights > $localizer_weights_fname
 fi
 
+if [ ! -e "$tagSimilarityEncoder_model_fname" ]; then
+    echo "Downloading tagSimilarityEncoder model"
+    curl -L $tagSimilarityEncoder_model > $tagSimilarityEncoder_model_fname
+fi
+
 if [ ! -e "$tagSimilarityEncoder_weights_fname" ]; then
     echo "Downloading tagSimilarityEncoder weights"
     curl -L $tagSimilarityEncoder_weights > $tagSimilarityEncoder_weights_fname
