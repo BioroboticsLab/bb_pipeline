@@ -19,7 +19,7 @@ def process_video(args):
         },
         'Localizer': {
             'threshold': args.saliency_threshold,
-            'model_path': args.saliency_weight_path
+            'weights_path': args.saliency_weight_path
         }
     }
 
@@ -36,7 +36,8 @@ def process_video(args):
     logger.info('Processing video frames from {}'.format(args.video_path))
     gen_processor(video_generator(args.video_path, args.text_root_path))
 
-if __name__ == '__main__':
+
+def main():
     parser = argparse.ArgumentParser(
         prog='BeesBook pipeline',
         description='Process a video using the beesbook pipeline')
@@ -51,3 +52,7 @@ if __name__ == '__main__':
     logger.info('Config: {}'.format(args))
 
     process_video(args)
+
+
+if __name__ == '__main__':
+    main()
