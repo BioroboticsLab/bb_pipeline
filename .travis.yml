@@ -51,7 +51,6 @@ install:
 - pip install --upgrade pytest pytest-benchmark pytest-cov pytest-xdist pytest-flake8
 - pip install --upgrade coveralls
 - pip install -e .
-- "./get_test_models.sh"
 script:
 - LD_LIBRARY_PATH="$HOME/ffmpeg/lib/:$LD_LIBRARY_PATH" py.test -v
 - sphinx-build docs _build/html
