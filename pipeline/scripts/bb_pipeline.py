@@ -24,7 +24,8 @@ def process_video(args):
     }
 
     logger.info('Initializing {} pipeline(s)'.format(args.num_threads))
-    plines = [Pipeline([Image, Timestamp], [PipelineResult], **config) for _ in range(args.num_threads)]
+    plines = [Pipeline([Image, Timestamp], [PipelineResult], **config)
+              for _ in range(args.num_threads)]
 
     logger.info('Loading bb_binary repository {}'.format(args.repo_output_path))
     repo = Repository(args.repo_output_path)
