@@ -212,7 +212,6 @@ def download_models(config):
             continue
         stage_config = new_config[stage_name]
         for key, value in stage_config.items():
-            print(key, value)
             if key.endswith('_path') and value.startswith('http'):
                 name = value.replace('/', '_')
                 fname = _get_cache_dir(name)
@@ -226,7 +225,6 @@ def download_models(config):
 def get_config_from_ini(fname):
     config = configparser.ConfigParser()
     config.read(fname)
-    print(list(config.items()))
     return download_models(config)
 
 
