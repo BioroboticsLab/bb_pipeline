@@ -14,7 +14,6 @@
 
 import sys
 import os
-from unittest.mock import MagicMock
 import subprocess
 import json
 

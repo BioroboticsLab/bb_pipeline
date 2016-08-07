@@ -1,4 +1,3 @@
-from os.path import join as pjoin
 from distutils.core import setup
 from pip.req import parse_requirements
 
@@ -18,7 +17,10 @@ setup(
     },
     install_requires=reqs,
     dependency_links=dep_links,
-    packages=['pipeline'],
+    packages=[
+        'pipeline',
+        'pipeline.scripts',
+    ],
     package_data={
         '': 'pipeline/config.ini'
     }
