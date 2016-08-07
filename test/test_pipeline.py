@@ -10,7 +10,7 @@ import numpy as np
 
 import localizer.config
 from pipeline import Pipeline
-from pipeline.pipeline import GeneratorProcessor
+from pipeline.pipeline import GeneratorProcessor, get_auto_config
 from pipeline.io import BBBinaryRepoSink, video_generator
 from pipeline.stages import Localizer, PipelineStage, ImageReader, \
     LocalizerPreprocessor, TagSimilarityEncoder, Decoder, DecoderPreprocessor, \
@@ -168,7 +168,7 @@ def test_config_dict(pipeline_config):
     print(config_dict)
     assert('Localizer' in config_dict)
     assert('Decoder' in config_dict)
-    assert(config_dict['Localizer']['model_path'] == 'REQUIRED')
+    assert(config_dict['Localizer']['weights_path'] == 'REQUIRED')
     assert(config_dict['Decoder']['model_path'] == 'REQUIRED')
     assert(config_dict['Decoder']['weights_path'] == 'REQUIRED')
 
@@ -296,3 +296,15 @@ def test_crown_visualiser_on_a_image(pipeline_results, bees_image, outdir):
     name, _ = os.path.splitext(os.path.basename(bees_image))
     imsave(str(outdir.join(name + "_overlay.png")), overlay)
     imsave(str(outdir.join(name + "_added_overlay.jpeg")), img_with_overlay)
+
+
+def test_auto_config():
+    config = get_auto_config()
+    assert 'Decoder' in config
+    assert os.path.exists(config['Decoder']['model_path'])
+    assert os.path.exists(config['Decoder']['weights_path'])
+    assert 'Localizer' in config
+    assert os.path.exists(config['Localizer']['weights_path'])
+    assert 'TagSimilarityEncoder' in config
+    assert os.path.exists(config['TagSimilarityEncoder']['weights_path'])
+    assert os.path.exists(config['TagSimilarityEncoder']['model_path'])

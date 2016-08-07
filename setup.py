@@ -14,5 +14,8 @@ setup(
              pjoin('bin', 'bb_pipeline_batch')],
     install_requires=reqs,
     dependency_links=dep_links,
-    packages=['pipeline']
+    packages=['pipeline'],
+    package_data={
+        '': 'pipeline/config.ini'
+    }
 )

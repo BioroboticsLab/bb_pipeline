@@ -88,11 +88,11 @@ class Localizer(PipelineStage):
     requires = [LocalizerInputImage]
     provides = [Regions, SaliencyImage, Saliencies, Candidates, PaddedCandidates]
 
-    def __init__(self, model_path, threshold=0.5):
+    def __init__(self, weights_path, threshold=0.5):
         self.saliency_threshold = threshold
         self.localizer = LocalizerAPI()
         self.localizer.logger.setLevel(logging.WARNING)
-        self.localizer.load_weights(model_path)
+        self.localizer.load_weights(weights_path)
         self.localizer.compile()
 
     def call(self, image):

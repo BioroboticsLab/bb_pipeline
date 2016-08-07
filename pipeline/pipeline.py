@@ -2,7 +2,11 @@ from joblib import Parallel, delayed
 import pipeline.stages
 from collections import defaultdict
 import inspect
+import urllib
+import configparser
 from inspect import Parameter
+import os
+import copy
 
 # for backward compatibility
 from pipeline.io import video_generator, BBBinaryRepoSink  # noqa
@@ -193,3 +197,42 @@ class Pipeline(object):
 
         assert(len(outputs) == len(self.outputs))
         return outputs
+
+
+def _get_cache_dir(name):
+    cache_dir = os.path.expanduser('~/.cache/bb_pipeline')
+    os.makedirs(cache_dir, exist_ok=True)
+    return os.path.join(cache_dir, name)
+
+
+def download_models(config):
+    new_config = copy.copy(config)
+    for stage_name in ('Localizer', 'Decoder', 'TagSimilarityEncoder'):
+        if stage_name not in config:
+            continue
+        stage_config = new_config[stage_name]
+        for key, value in stage_config.items():
+            print(key, value)
+            if key.endswith('_path') and value.startswith('http'):
+                name = value.replace('/', '_')
+                fname = _get_cache_dir(name)
+                if not os.path.exists(fname):
+                    print("Downloading {}".format(value))
+                    urllib.request.urlretrieve(value, fname)
+                stage_config[key] = fname
+    return new_config
+
+
+def get_config_from_ini(fname):
+    config = configparser.ConfigParser()
+    config.read(fname)
+    print(list(config.items()))
+    return download_models(config)
+
+
+def get_auto_config():
+    """
+    Returns a sane default config for the pipeline.
+    """
+    config_fname = os.path.join(os.path.dirname(__file__), 'config.ini')
+    return get_config_from_ini(config_fname)
