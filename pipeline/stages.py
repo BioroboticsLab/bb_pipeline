@@ -195,19 +195,22 @@ class TagSimilarityEncoder(PipelineStage):
         return out
 
     def call(self, regions):
-        #crop images to match input shape of model
-        _,_,lx,ly = regions.shape
-        _,_,mx,my = self.model.input_shape
-        regions = regions[:,:,lx//2 - mx//2 : lx//2 + mx//2,  ly//2 - my//2 : ly//2 + my//2]
-
+        # crop images to match input shape of model
+        _, _, lx, ly = regions.shape
+        _, _, mx, my = self.model.input_shape
+        slice_x = slice(lx//2 - mx//2, lx//2 + mx//2)
+        slice_y = slice(ly//2 - my//2, ly//2 + my//2)
+        regions = regions[:, :, slice_x, slice_y]
         predictions = self.model.predict(regions)
-        #thresholding predictions
-        predictions = np.sign(predictions)           
-        predictions = np.where(predictions == 0, -1,predictions)
-        predictions =  (predictions + 1) * 0.5
+        # thresholding predictions
+        predictions = np.sign(predictions)
+        predictions = np.where(predictions == 0, -1, predictions)
+        predictions = (predictions + 1) * 0.5
 
-        predictions = np.array([TagSimilarityEncoder.bit_array_to_int(pred) for pred in predictions])
+        predictions = np.array([TagSimilarityEncoder.bit_array_to_int(pred)
+                                for pred in predictions])
         return [predictions]
+
 
 class SaliencyVisualizer(PipelineStage):
     requires = [Image, SaliencyImage]
