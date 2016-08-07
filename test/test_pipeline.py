@@ -2,6 +2,7 @@ import os
 import time
 import datetime
 import pytz
+import pytest
 
 from scipy.misc import imread, imsave
 from scipy.ndimage.interpolation import zoom
@@ -124,6 +125,7 @@ def test_padding(pipeline_config):
         assert(all([(pc - offset) == oc for pc, oc in zip(padded, original)]))
 
 
+@pytest.mark.slow
 def test_decoder(pipeline_config):
     pipeline = Pipeline([Filename], [Candidates, IDs], **pipeline_config)
 
@@ -162,6 +164,7 @@ def test_tagSimilarityEncoder(pipeline_config):
     assert len(outputs[Descriptors]) > 20
 
 
+@pytest.mark.slow
 def test_config_dict(pipeline_config):
     pipeline = Pipeline([Filename], [PipelineResult], **pipeline_config)
     config_dict = pipeline.get_config()
@@ -173,6 +176,7 @@ def test_config_dict(pipeline_config):
     assert(config_dict['Decoder']['weights_path'] == 'REQUIRED')
 
 
+@pytest.mark.slow
 def test_generator_processor(tmpdir, bees_image, pipeline_config):
     def image_generator():
         ts = time.time()
@@ -201,6 +205,7 @@ def test_generator_processor(tmpdir, bees_image, pipeline_config):
         last_ts = fc.fromTimestamp
 
 
+@pytest.mark.slow
 def test_generator_processor_video(tmpdir, bees_video, filelists_path, pipeline_config):
     repo = Repository(str(tmpdir))
     pipeline = Pipeline([Image, Timestamp], [PipelineResult], **pipeline_config)
@@ -227,6 +232,7 @@ def test_generator_processor_video(tmpdir, bees_video, filelists_path, pipeline_
     assert(num_frames == 3)
 
 
+@pytest.mark.slow
 def test_generator_processor_threads(tmpdir, bees_video, filelists_path, pipeline_config):
     repo = Repository(str(tmpdir))
     pipelines = [Pipeline([Image, Timestamp], [PipelineResult], **pipeline_config) for
