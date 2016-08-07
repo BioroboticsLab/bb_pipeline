@@ -20,7 +20,10 @@ class PipelineObjectDescription(object):
 
     @classmethod
     def validate(cls, value):
-        assert type(value) is cls.type
+        if type(value) is not cls.type:
+            raise Exception(
+                "Expected value of be of type {}.  But got value {} of type {}"
+                .format(cls.type, value, type(value)))
 
 
 class FilenameDescription(PipelineObjectDescription):
@@ -29,7 +32,8 @@ class FilenameDescription(PipelineObjectDescription):
     @classmethod
     def validate(cls, fname):
         super(FilenameDescription, cls).validate(fname)
-        assert os.path.isfile(fname)
+        if not os.path.isfile(fname):
+            raise Exception("Got invalid filename {}.".format(fname))
 
 
 class NumpyArrayDescription(PipelineObjectDescription):
@@ -47,15 +51,17 @@ class NumpyArrayDescription(PipelineObjectDescription):
 
         super(NumpyArrayDescription, cls).validate(arr)
         if ndim():
-            assert ndim() == len(arr.shape), \
-                "ndim missmatch: Expected {}, got shape {} with {}"\
-                .format(ndim(), arr.shape, len(arr.shape))
+            if ndim() != len(arr.shape):
+                raise Exception(
+                    "ndim missmatch: Expected {}, got shape {} with {}"
+                    .format(ndim(), arr.shape, len(arr.shape)))
         if cls.shape is not None:
             for i, (expected, got) in enumerate(zip(cls.shape, arr.shape)):
                 if expected is not None:
-                    assert expected == got, \
-                        "Shape missmatch at dimension {}: expected {}, got {}."\
-                        .format(i, expected, got)
+                    if expected != got:
+                        raise Exception(
+                            "Shape missmatch at dimension {}: expected {}, got {}."
+                            .format(i, expected, got))
 
 
 class CameraIndex(PipelineObjectDescription):
