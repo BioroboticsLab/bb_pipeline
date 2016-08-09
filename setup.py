@@ -22,6 +22,6 @@ setup(
         'pipeline.scripts',
     ],
     package_data={
-        '': 'pipeline/config.ini'
+        '': ['pipeline/config.ini']
     }
 )
