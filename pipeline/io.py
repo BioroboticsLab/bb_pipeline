@@ -8,23 +8,30 @@ import os
 from bb_binary import DataSource, FrameContainer, \
     parse_image_fname, parse_video_fname, get_timezone
 from pipeline.objects import PipelineResult
+import numpy as np
+
+
+def raw_frames_generator(path_video):
+    "iterates over the frame of the video. The video "
+    container = av.open(path_video)
+    assert(len(container.streams) == 1)
+    video = container.streams[0]
+    for packet in container.demux(video):
+        for frame in packet.decode():
+            reformated = frame.reformat(format='gray8')
+            if(len(reformated.planes) != 1):
+                raise Exception("Cannot convert frame to numpy array.")
+            arr = np.frombuffer(reformated.planes[0], np.dtype('uint8'))
+            yield arr.reshape(reformated.height, reformated.width).copy()
 
 
 def video_generator(path_video, path_filelists):
     fname_video = os.path.basename(path_video)
     timestamps = get_timestamps(fname_video, path_filelists)
     data_source = DataSource.new_message(filename=fname_video)
-
-    container = av.open(path_video)
-    assert(len(container.streams) == 1)
-    video = container.streams[0]
-
-    idx = 0
-    for packet in container.demux(video):
-        for frame in packet.decode():
-            img = frame.to_rgb().to_nd_array()[:, :, 0]
-            yield data_source, img, timestamps[idx]
-            idx += 1
+    for i, frame in enumerate(raw_frames_generator(path_video)):
+        img = frame
+        yield data_source, img, timestamps[i]
 
 
 class Sink:
