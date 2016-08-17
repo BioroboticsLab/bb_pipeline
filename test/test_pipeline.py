@@ -171,9 +171,8 @@ def test_config_dict(pipeline_config):
     print(config_dict)
     assert('Localizer' in config_dict)
     assert('Decoder' in config_dict)
-    assert(config_dict['Localizer']['weights_path'] == 'REQUIRED')
+    assert(config_dict['Localizer']['model_path'] == 'REQUIRED')
     assert(config_dict['Decoder']['model_path'] == 'REQUIRED')
-    assert(config_dict['Decoder']['weights_path'] == 'REQUIRED')
 
 
 @pytest.mark.slow
@@ -308,9 +307,8 @@ def test_auto_config():
     config = get_auto_config()
     assert 'Decoder' in config
     assert os.path.exists(config['Decoder']['model_path'])
-    assert os.path.exists(config['Decoder']['weights_path'])
     assert 'Localizer' in config
-    assert os.path.exists(config['Localizer']['weights_path'])
+    assert os.path.exists(config['Localizer']['model_path'])
     assert 'TagSimilarityEncoder' in config
     assert os.path.exists(config['TagSimilarityEncoder']['weights_path'])
     assert os.path.exists(config['TagSimilarityEncoder']['model_path'])

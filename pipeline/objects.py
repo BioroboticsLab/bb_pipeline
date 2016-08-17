@@ -84,6 +84,10 @@ class Timestamp(PipelineObjectDescription):
     type = float
 
 
+class LocalizerShapes(PipelineObjectDescription):
+    type = dict
+
+
 class LocalizerInputImage(NumpyArrayDescription):
     ndim = 2
 

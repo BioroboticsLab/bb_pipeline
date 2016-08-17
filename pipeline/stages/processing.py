@@ -1,21 +1,20 @@
-import logging
+import numbers
 
 import cv2
 import numpy as np
+from skimage.exposure import equalize_hist
+from skimage.feature import peak_local_max
 from skimage.io import imread
-from scipy.ndimage.filters import gaussian_filter1d
-import localizer
-import localizer.util
-import localizer.config
-from localizer.localizer import Localizer as LocalizerAPI
+from scipy.ndimage import zoom
+from scipy.ndimage.filters import gaussian_filter
 from keras.models import model_from_json
 from bb_binary import parse_image_fname
-
+from diktya.func_api_helpers import load_model
 from pipeline.stages.stage import PipelineStage
 from pipeline.objects import DecoderRegions, Filename, Image, Timestamp, \
     CameraIndex, Positions, HivePositions, Orientations, IDs, Saliencies, \
     PipelineResult, Candidates, Regions, Descriptors, LocalizerInputImage, \
-    SaliencyImage, PaddedImage, PaddedCandidates
+    SaliencyImage, PaddedImage, PaddedCandidates, LocalizerShapes
 
 
 class ImageReader(PipelineStage):
@@ -30,72 +29,130 @@ class ImageReader(PipelineStage):
 
 class LocalizerPreprocessor(PipelineStage):
     requires = [Image]
-    provides = [PaddedImage, LocalizerInputImage]
+    provides = [PaddedImage, LocalizerInputImage, LocalizerShapes]
 
     def __init__(self,
+                 roi_size=100,
+                 downsampled_size=32,
                  clahe_clip_limit=2,
                  clahe_tile_width=64,
                  clahe_tile_heigth=64):
         self.clahe = cv2.createCLAHE(clahe_clip_limit, (clahe_tile_width, clahe_tile_heigth))
+        self.roi_size = roi_size
+        self.downsampled_size = downsampled_size
+        self.pad_size = int(roi_size / downsampled_size * (downsampled_size // 2))
 
-    @staticmethod
-    def pad(image):
-        return np.pad(image, [s // 2 for s in localizer.config.data_imsize], mode='edge')
+    def pad(self, image):
+        return np.pad(image, self.pad_size, mode='edge')
 
     def call(self, image):
-        return [LocalizerPreprocessor.pad(image),
-                LocalizerPreprocessor.pad(self.clahe.apply(image))]
+        shapes = {
+            'roi_size': self.roi_size,
+            'downsampled_size': self.downsampled_size,
+            'pad_size': self.pad_size
+        }
+
+        return [self.pad(image),
+                self.pad(self.clahe.apply(image)),
+                shapes]
 
 
 class Localizer(PipelineStage):
-    requires = [LocalizerInputImage]
+    requires = [LocalizerInputImage, PaddedImage, LocalizerShapes]
     provides = [Regions, SaliencyImage, Saliencies, Candidates, PaddedCandidates]
 
-    def __init__(self, weights_path, threshold=0.5):
+    def __init__(self,
+                 model_path,
+                 threshold=0.6):
         self.saliency_threshold = threshold
-        self.localizer = LocalizerAPI()
-        self.localizer.logger.setLevel(logging.WARNING)
-        self.localizer.load_weights(weights_path)
-        self.localizer.compile()
+        self.model = load_model(model_path)
+        self.model._make_predict_function()
 
-    def call(self, image):
-        results = self.localizer.detect_tags(
-            image, saliency_threshold=self.saliency_threshold)
-        saliencies, candidates, rois, saliency_image = results
+    @staticmethod
+    def extract_saliencies(candidates, saliency):
+        saliencies = np.zeros((len(candidates), 1))
+        for idx, (r, c) in enumerate(candidates):
+            saliencies[idx] = saliency[r, c]
+        return saliencies
+
+    @staticmethod
+    def extract_rois(candidates, image, roi_size):
+        roi_shape = (roi_size, roi_size)
+        rois = []
+        mask = np.zeros((len(candidates),), dtype=np.bool_)
+        for idx, (r, c) in enumerate(candidates):
+            rh = roi_shape[0] / 2
+            ch = roi_shape[1] / 2
+            # probably introducing a bias here
+            roi_orig = image[int(np.ceil(r - rh)):int(np.ceil(r + rh)),
+                             int(np.ceil(c - ch)):int(np.ceil(c + ch))]
+            if roi_orig.shape == roi_shape:
+                rois.append(roi_orig)
+                mask[idx] = 1
+        rois = np.stack(rois, axis=0)[:, np.newaxis]
+        return rois, mask
+
+    def get_candidates(self, saliency, dist):
+        assert (isinstance(dist, numbers.Integral))
+        dist = int(dist)
+        below_thresh = saliency < self.saliency_threshold
+        im = saliency.copy()
+        im[below_thresh] = 0.
+        candidates = peak_local_max(im, min_distance=dist)
+        return candidates
+
+    def call(self, image, orig_image, shapes):
+        roi_size = shapes['roi_size']
+        downsampled_size = shapes['downsampled_size']
+        pad_size = shapes['pad_size']
+
+        downscale_factor = downsampled_size / roi_size
+        zoom_shape = [downscale_factor, downscale_factor]
+        scale_factor = roi_size / downsampled_size
+
+        image_downsampled = zoom(image, zoom_shape).astype(np.float32) / 255.
+
+        saliency = self.model.predict(image_downsampled[np.newaxis, np.newaxis, :, :])[0, 0]
+        saliency = gaussian_filter(saliency, sigma=3/4)
+
+        # 64 is tag size, 2 * 2 due to downsampling in saliency network
+        candidates = self.get_candidates(saliency, dist=int(64 / (2 * 2 * scale_factor) - 1))
+        saliencies = self.extract_saliencies(candidates, saliency)
 
         # TODO: investigate source of offset
-        offset = 4
-        candidates -= offset
+        # probably a bias in the localizer train data caused by the old pipeline
+        offset = 6
+        # simulate reverse padding and downsampling of saliency network
+        padded_candidates = (((candidates + 2) * 2 + 2) * 2 + 2) * scale_factor + offset
+        candidates_img = padded_candidates - pad_size
 
-        padded_candidates = np.copy(candidates)
+        rois, mask = self.extract_rois(padded_candidates, orig_image, roi_size)
+        rois = rois.astype(np.float32) / 255.
 
-        assert(localizer.config.data_imsize[0] == localizer.config.data_imsize[1])
-        candidates -= localizer.config.data_imsize[0] // 2
-
-        return [rois, saliency_image, saliencies, candidates, padded_candidates]
+        return [rois, saliency, saliencies, candidates_img, padded_candidates]
 
 
 class DecoderPreprocessor(PipelineStage):
-    requires = [PaddedImage, PaddedCandidates]
+    requires = [Regions, LocalizerShapes]
     provides = [DecoderRegions]
 
-    def call(self, image, candidates):
-        rois, mask = localizer.util.extract_rois(candidates,
-                                                 image)
-        assert(len(rois) == len(candidates))
-        rois = gaussian_filter1d(
-            gaussian_filter1d(rois, 2/3, axis=-1), 2 / 3, axis=-2)
-        # TODO: add localizer/decoder roi size difference to config
-        return (rois[:, :, 18:-18, 18:-18] / 255.) * 2 - 1
+    def call(self, rois, shapes):
+        roi_size = shapes['roi_size']
+        # decoder expects input shape [samples, 1, 64, 64]
+        crop_size = (roi_size - 64) // 2
+
+        cropped_rois = rois[:, :, crop_size:-crop_size, crop_size:-crop_size]
+        cropped_rois = np.stack([equalize_hist(roi) for roi in cropped_rois])
+
+        return cropped_rois * 2 - 1
 
 
 class Decoder(PipelineStage):
     requires = [DecoderRegions, Candidates]
     provides = [Positions, Orientations, IDs]
 
-    def __init__(self, model_path, weights_path):
-        self.model = model_from_json(open(model_path).read())
-        self.model.load_weights(weights_path)
+    def __init__(self, model_path):
+        self.model = load_model(model_path)
         # We can't use model.compile because it requires an optimizer and a loss function.
         # Since we only use the model for inference, we call the private function
         # _make_predict_function(). This is exactly what keras would do otherwise the first
