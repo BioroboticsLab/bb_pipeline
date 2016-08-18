@@ -5,23 +5,14 @@ from itertools import chain
 
 from pipeline import Pipeline
 from pipeline.cmdline import logger, get_shared_positional_arguments, get_shared_optional_arguments
-from pipeline.pipeline import GeneratorProcessor
+from pipeline.pipeline import GeneratorProcessor, get_auto_config
 from pipeline.io import BBBinaryRepoSink, video_generator
 from pipeline.objects import PipelineResult, Image, Timestamp
 from bb_binary import Repository, parse_video_fname
 
 
 def process_video(args):
-    config = {
-        'Decoder': {
-            'weights_path': args.decoder_weight_path,
-            'model_path': args.decoder_model_path
-        },
-        'Localizer': {
-            'threshold': args.saliency_threshold,
-            'weights_path': args.saliency_weight_path
-        }
-    }
+    config = get_auto_config()
 
     logger.info('Initializing {} pipeline(s)'.format(args.num_threads))
     plines = [Pipeline([Image, Timestamp], [PipelineResult], **config)
