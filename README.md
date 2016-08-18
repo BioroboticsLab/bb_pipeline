@@ -11,8 +11,8 @@ from pipeline import Pipeline
 from pipeline.objects import Filename, Candidates, Saliencies, IDs
 from pipeline.pipeline import get_auto_config
 
-pipeline = Pipeline([Filename], #inputs
-                    [Candidates, Saliencies, IDs], #outputs
+pipeline = Pipeline([Filename],  # inputs
+                    [Candidates, Saliencies, IDs],  # outputs
                     **get_auto_config())
 results = pipeline(['/local/image/file.jpeg'])
 ```
