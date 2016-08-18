@@ -7,7 +7,6 @@ from skimage.feature import peak_local_max
 from skimage.io import imread
 from scipy.ndimage import zoom
 from scipy.ndimage.filters import gaussian_filter
-from keras.models import model_from_json
 from bb_binary import parse_image_fname
 from diktya.func_api_helpers import load_model
 from pipeline.stages.stage import PipelineStage
@@ -199,8 +198,7 @@ class TagSimilarityEncoder(PipelineStage):
     provides = [Descriptors]
 
     def __init__(self, **config):
-        self.model = model_from_json(open(config['model_path']).read())
-        self.model.load_weights(config['weights_path'])
+        self.model = load_model(config['model_path'])
         # We can't use model.compile because it requires an optimizer and a loss function.
         # Since we only use the model for inference, we call the private function
         # _make_predict_function(). This is exactly what keras would do otherwise the first
