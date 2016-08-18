@@ -310,5 +310,4 @@ def test_auto_config():
     assert 'Localizer' in config
     assert os.path.exists(config['Localizer']['model_path'])
     assert 'TagSimilarityEncoder' in config
-    assert os.path.exists(config['TagSimilarityEncoder']['weights_path'])
     assert os.path.exists(config['TagSimilarityEncoder']['model_path'])
