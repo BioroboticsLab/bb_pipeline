@@ -277,7 +277,7 @@ def test_localizer_visualizer(pipeline_results, bees_image, outdir):
     res = pipeline_results
     vis = LocalizerVisualizer(roi_overlay='circle')
     name, _ = os.path.splitext(os.path.basename(bees_image))
-    overlay, = vis(res[Image], res[Candidates])
+    overlay, = vis(res[Image], res[Candidates], {'roi_size': 100})
     imsave(str(outdir.join(name + "_localizer.png")), overlay)
 
 

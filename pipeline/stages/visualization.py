@@ -4,13 +4,12 @@ import numpy as np
 from skimage.color import hsv2rgb, rgb2hsv, gray2rgb
 from skimage.transform import resize
 from skimage.exposure import adjust_gamma
-from localizer.visualization import get_roi_overlay, get_circle_overlay
 import matplotlib
 
 from pipeline.stages.stage import PipelineStage
 from pipeline.objects import Image, Orientations, IDs, SaliencyOverlay, \
     Candidates, CandidateOverlay, FinalResultOverlay, SaliencyImage, \
-    CrownOverlay
+    CrownOverlay, LocalizerShapes
 
 
 class SaliencyVisualizer(PipelineStage):
@@ -37,18 +36,73 @@ class SaliencyVisualizer(PipelineStage):
 
 
 class LocalizerVisualizer(PipelineStage):
-    requires = [Image, Candidates]
+    requires = [Image, Candidates, LocalizerShapes]
     provides = [CandidateOverlay]
 
     def __init__(self, roi_overlay='circle'):
         assert roi_overlay in ('rect', 'circle')
         self.roi_overlay = roi_overlay
 
-    def call(self, image, candidates):
-        if self.roi_overlay == 'rect':
-            return get_roi_overlay(candidates, image / 255.)
+    @staticmethod
+    def get_roi_overlay(coordinates, image, roi_size):
+        def roi_slice(coord):
+            return slice(int(np.ceil(coord - roi_size / 2)),
+                         int(np.ceil(coord + roi_size / 2)))
+
+        pltim = np.zeros((image.shape[0], image.shape[1], 3))
+        pltim[:, :, 0] = image
+        pltim[:, :, 1] = image
+        pltim[:, :, 2] = image
+        for idx, (r, c) in enumerate(coordinates):
+            sl_r = roi_slice(r)
+            sl_c = roi_slice(c)
+            pltim[sl_r, sl_c] = 1.
+
+        return pltim
+
+    @staticmethod
+    def get_circle_overlay(coordinates, image, radius=32, line_width=8,
+                           color=(1., 0, 0)):
+        height, width = image.shape[:2]
+        if image.ndim == 2:
+            overlay = np.stack([image, image, image], axis=-1)
+        elif image.ndim == 3 and image.shape[-1] == 3:
+            overlay = image.copy()
         else:
-            return get_circle_overlay(candidates, image / 255.)
+            raise Exception("Did not understand image shape {}.".format(image.shape))
+
+        import cairocffi as cairo
+        image_surface = cairo.ImageSurface(cairo.FORMAT_A8, image.shape[1], image.shape[0])
+        ctx = cairo.Context(image_surface)
+        for x, y in coordinates:
+            ctx.save()
+            ctx.translate(int(y), int(x))
+            ctx.new_path()
+            ctx.arc(0, 0, radius + line_width / 2., 0, 2 * np.pi)
+            ctx.close_path()
+            ctx.set_source_rgba(0, 0, 0, 1)
+            ctx.set_line_width(line_width)
+            ctx.stroke()
+            ctx.restore()
+
+        image_surface.flush()
+        circles = np.ndarray(shape=(height, width),
+                             buffer=image_surface.get_data(),
+                             dtype=np.uint8)
+        circles_mask = (circles == 255)
+        for i in range(3):
+            overlay[circles_mask, i] = color[i]
+        image_surface.finish()
+
+        return overlay
+
+    def call(self, image, candidates, shapes):
+        roi_size = shapes['roi_size']
+
+        if self.roi_overlay == 'rect':
+            return self.get_roi_overlay(candidates, image / 255., roi_size)
+        else:
+            return self.get_circle_overlay(candidates, image / 255.)
 
 
 class ResultCrownVisualizer(PipelineStage):
