@@ -43,9 +43,8 @@ install:
 - source activate test-environment
 - conda install -q -c https://conda.binstar.org/menpo opencv3
 - PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$HOME/ffmpeg/lib/pkgconfig" pip install av
-- pip install git+https://github.com/Theano/Theano.git#egg=theano
-- pip install git+https://github.com/fchollet/keras.git#egg=keras
-- pip install git+git://github.com/nebw/saliency-localizer.git#egg=saliency_localizer>=0.0.1
+- pip install theano
+- pip install keras==1.0.6
 - CC=/usr/bin/gcc-4.9 CXX=/usr/bin/g++-4.9 pip install pycapnp
 - pip install git+https://github.com/BioroboticsLab/bb_binary.git#egg=bb_binary
 - pip install git+https://github.com/BioroboticsLab/diktya.git#egg=diktya
