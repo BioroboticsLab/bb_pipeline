@@ -9,7 +9,6 @@ from scipy.ndimage.interpolation import zoom
 
 import numpy as np
 
-import localizer.config
 from pipeline import Pipeline
 from pipeline.pipeline import GeneratorProcessor, get_auto_config
 from pipeline.io import BBBinaryRepoSink, video_generator
@@ -19,7 +18,7 @@ from pipeline.stages import Localizer, PipelineStage, ImageReader, \
 
 from pipeline.objects import Filename, Image, Timestamp, CameraIndex, IDs, \
     PipelineResult, Candidates, Regions, Descriptors, LocalizerInputImage, \
-    SaliencyImage, PaddedCandidates, PaddedImage, Orientations
+    SaliencyImage, PaddedCandidates, PaddedImage, Orientations, LocalizerShapes
 from bb_binary import Repository, DataSource, FrameContainer
 
 
@@ -108,19 +107,17 @@ def test_localizer(pipeline_config):
 
 def test_padding(pipeline_config):
     pipeline = Pipeline([Filename], [PaddedCandidates, Candidates,
-                                     PaddedImage, Image],
+                                     PaddedImage, Image, LocalizerShapes],
                         **pipeline_config)
 
     fname = os.path.dirname(__file__) + '/data/Cam_2_20150821161530_884267.jpeg'
     outputs = pipeline([fname])
 
-    assert len(outputs) == 4
+    assert len(outputs) == 5
     assert PaddedImage in outputs
     assert PaddedCandidates in outputs
 
-    assert(localizer.config.data_imsize[0] == localizer.config.data_imsize[1])
-    assert(localizer.config.data_imsize[0] % 2 == 0)
-    offset = localizer.config.data_imsize[0] // 2
+    offset = outputs[LocalizerShapes]['roi_size'] // 2
     for padded, original in zip(outputs[PaddedCandidates], outputs[Candidates]):
         assert(all([(pc - offset) == oc for pc, oc in zip(padded, original)]))
 
