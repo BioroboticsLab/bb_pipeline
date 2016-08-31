@@ -98,7 +98,7 @@ class BBBinaryRepoSink(Sink):
                 db.yRotation = float(detection.orientations[i, 1])
                 db.xRotation = float(detection.orientations[i, 2])
                 db.localizerSaliency = float(detection.saliencies[i, 0])
-                db.radius = float(0)
+                db.radius = float(detection.radii[i])
                 decodedId = db.init('decodedId', len(detection.ids[i]))
                 for j, bit in enumerate(detection.ids[i]):
                     decodedId[j] = int(round(255*bit))

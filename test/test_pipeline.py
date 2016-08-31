@@ -18,7 +18,8 @@ from pipeline.stages import Localizer, PipelineStage, ImageReader, \
 
 from pipeline.objects import Filename, Image, Timestamp, CameraIndex, IDs, \
     PipelineResult, Candidates, Regions, Descriptors, LocalizerInputImage, \
-    SaliencyImage, PaddedCandidates, PaddedImage, Orientations, LocalizerShapes
+    SaliencyImage, PaddedCandidates, PaddedImage, Orientations, LocalizerShapes, \
+    Radii
 from bb_binary import Repository, DataSource, FrameContainer
 
 
@@ -124,7 +125,7 @@ def test_padding(pipeline_config):
 
 @pytest.mark.slow
 def test_decoder(pipeline_config):
-    pipeline = Pipeline([Filename], [Candidates, IDs], **pipeline_config)
+    pipeline = Pipeline([Filename], [Candidates, IDs, Radii], **pipeline_config)
 
     expected_stages = [ImageReader,
                        LocalizerPreprocessor,
@@ -137,19 +138,22 @@ def test_decoder(pipeline_config):
 
     outputs = pipeline([fname])
 
-    assert len(outputs) == 2
+    assert len(outputs) == 3
     assert IDs in outputs
     assert Candidates in outputs
+    assert Radii in outputs
 
     candidates = outputs[Candidates]
     ids = outputs[IDs]
+    radii = outputs[Radii]
 
     assert(len(ids) == len(candidates))
+    assert(len(ids) == len(radii))
 
-    for pos, id in zip(candidates, ids):
+    for pos, id, radius in zip(candidates, ids, radii):
         pos = np.round(pos).astype(np.int)
         id = ''.join([str(int(b)) for b in (np.round(id))])
-        print('Detection at ({}, {}) \t ID: {}'.format(pos[0], pos[1], id))
+        print('Detection at ({}, {}) \t ID: {} \t Radius: {}'.format(pos[0], pos[1], id, radius))
 
 
 def test_tagSimilarityEncoder(pipeline_config):
