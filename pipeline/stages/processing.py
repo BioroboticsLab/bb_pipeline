@@ -8,7 +8,8 @@ from skimage.io import imread
 from scipy.ndimage import zoom
 from scipy.ndimage.filters import gaussian_filter
 from bb_binary import parse_image_fname
-from diktya.func_api_helpers import load_model
+from diktya.func_api_helpers import load_model, predict_wrapper
+from diktya.distributions import DistributionCollection
 from pipeline.stages.stage import PipelineStage
 from pipeline.objects import DecoderRegions, Filename, Image, Timestamp, \
     CameraIndex, Positions, HivePositions, Orientations, IDs, Saliencies, \
@@ -152,22 +153,33 @@ class Decoder(PipelineStage):
 
     def __init__(self, model_path):
         self.model = load_model(model_path)
-        # We can't use model.compile because it requires an optimizer and a loss function.
-        # Since we only use the model for inference, we call the private function
-        # _make_predict_function(). This is exactly what keras would do otherwise the first
-        # time model.predict() is called.
+        self.distribution = DistributionCollection.from_hdf5(model_path)
+        self._predict = predict_wrapper(self.model.predict, self.model.output_names)
         self.model._make_predict_function()
 
+    def predict(self, regions):
+        structed_array = np.zeros((len(regions),),
+                                  dtype=self.distribution.norm_dtype)
+        predictions = self._predict(regions)
+        for name, arr in predictions.items():
+            if name.startswith('bit_'):
+                bit_idx = int(name.split('_')[1])
+                assert arr.shape == (len(regions), 1)
+                structed_array['bits'][:, bit_idx] = 2*arr[:, 0] - 1
+            else:
+                structed_array[name] = arr
+        return structed_array
+
     def call(self, regions, candidates):
-        predicitions = self.model.predict(regions)
-        ids = predicitions[:12]
-        z_rot = np.arctan2(predicitions[12], predicitions[13])
-        y_rot = predicitions[14]
-        x_rot = predicitions[15]
+        predictions_norm = self.predict(regions)
+        predictions = self.distribution.denormalize(predictions_norm)
+        ids = predictions['bits']
+        z_rot = predictions['z_rotation']
+        y_rot = predictions['y_rotation']
+        x_rot = predictions['x_rotation']
         orientations = np.hstack((z_rot, y_rot, x_rot))
-        # TODO: use offset from decoder net
-        positions = candidates
-        return [positions, orientations, np.array(ids).T[0]]
+        positions = candidates + predictions['center']
+        return [positions, orientations, ids]
 
 
 class CoordinateMapper(PipelineStage):
