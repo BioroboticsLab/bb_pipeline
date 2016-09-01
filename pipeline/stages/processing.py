@@ -90,6 +90,8 @@ class Localizer(PipelineStage):
             if roi_orig.shape == roi_shape:
                 rois.append(roi_orig)
                 mask[idx] = 1
+        if not rois:
+            raise Exception("No rois found")
         rois = np.stack(rois, axis=0)[:, np.newaxis]
         return rois, mask
 
