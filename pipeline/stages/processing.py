@@ -24,8 +24,8 @@ class ImageReader(PipelineStage):
 
     def call(self, fname):
         image = imread(fname)
-        camIdx, dt = parse_image_fname(fname, 'beesbook')
-        return image, dt, camIdx
+        camIdx, dt = parse_image_fname(fname)
+        return image, dt.timestamp(), camIdx
 
 
 class LocalizerPreprocessor(PipelineStage):

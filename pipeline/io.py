@@ -1,9 +1,7 @@
 import av
 import hashlib
-from datetime import datetime
 from itertools import chain
 import uuid
-import pytz
 import os
 from bb_binary import DataSource, FrameContainer, \
     parse_image_fname, parse_video_fname, get_timezone
@@ -119,9 +117,8 @@ class BBBinaryRepoSink(Sink):
 
 
 def get_timestamps(fname_video, path_filelists, ts_format='2015'):
-    def get_flist_name(ts):
+    def get_flist_name(dt_utc):
         fmt = '%Y%m%d'
-        dt_utc = datetime.fromtimestamp(ts, tz=pytz.utc)
         dt = dt_utc.astimezone(get_timezone())
         if ts_format == '2014':
             return dt.strftime(fmt) + '.txt'
@@ -136,8 +133,8 @@ def get_timestamps(fname_video, path_filelists, ts_format='2015'):
                 return os.path.join(path, name)
         assert False, 'File {} not found in: {}'.format(name, path)
 
-    cam, from_ts, to_ts = parse_video_fname(fname_video)
-    txt_files = set([get_flist_name(from_ts), get_flist_name(to_ts)])
+    cam, from_dt, to_dt = parse_video_fname(fname_video)
+    txt_files = set([get_flist_name(from_dt), get_flist_name(to_dt)])
     txt_paths = [find_file(f, path_filelists) for f in txt_files]
 
     image_fnames = list(chain.from_iterable([open(path, 'r').readlines() for path in txt_paths]))
@@ -146,4 +143,4 @@ def get_timestamps(fname_video, path_filelists, ts_format='2015'):
     image_fnames.sort()
 
     fnames = image_fnames[image_fnames.index(first_fname):image_fnames.index(second_fname) + 1]
-    return [parse_image_fname(fn, format='beesbook')[1] for fn in fnames]
+    return [parse_image_fname(fn, format='beesbook')[1].timestamp() for fn in fnames]
