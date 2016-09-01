@@ -11,8 +11,21 @@ from pipeline.objects import PipelineResult
 import numpy as np
 
 
-def raw_frames_generator(path_video, format='autodect'):
-    "iterates over the frame of the video. The video "
+def raw_frames_generator(path_video, format='guess_on_ext'):
+    "yields the frames of the video."
+
+    def guess_format_on_extension():
+        _, ext = os.path.splitext(path_video)
+        if ext == '.mkv':
+            format = None
+        elif ext == '.avi':
+            format = 'hevc'
+        else:
+            raise Exception("Unknown extension {}.".format(ext))
+        return format
+    if format == 'guess_on_ext':
+        format = guess_format_on_extension()
+
     container = av.open(path_video, format=format)
     assert(len(container.streams) == 1)
     video = container.streams[0]
