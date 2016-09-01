@@ -14,7 +14,8 @@ from pipeline.stages.stage import PipelineStage
 from pipeline.objects import DecoderRegions, Filename, Image, Timestamp, \
     CameraIndex, Positions, HivePositions, Orientations, IDs, Saliencies, \
     PipelineResult, Candidates, Regions, Descriptors, LocalizerInputImage, \
-    SaliencyImage, PaddedImage, PaddedCandidates, LocalizerShapes, Radii
+    SaliencyImage, PaddedImage, PaddedCandidates, LocalizerShapes, Radii, \
+    DecoderPredictions
 
 
 class ImageReader(PipelineStage):
@@ -149,7 +150,7 @@ class DecoderPreprocessor(PipelineStage):
 
 class Decoder(PipelineStage):
     requires = [DecoderRegions, Candidates]
-    provides = [Positions, Orientations, IDs, Radii]
+    provides = [Positions, Orientations, IDs, Radii, DecoderPredictions]
 
     def __init__(self, model_path):
         self.model = load_model(model_path)
@@ -180,7 +181,7 @@ class Decoder(PipelineStage):
         orientations = np.hstack((z_rot, y_rot, x_rot))
         positions = candidates + predictions['center']
         radii = predictions['radius']
-        return [positions, orientations, ids, radii]
+        return [positions, orientations, ids, radii, predictions]
 
 
 class CoordinateMapper(PipelineStage):

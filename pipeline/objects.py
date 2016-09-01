@@ -164,3 +164,7 @@ class SaliencyOverlay(NumpyArrayDescription):
 
 class FinalResultOverlay(NumpyArrayDescription):
     pass
+
+
+class DecoderPredictions(NumpyArrayDescription):
+    pass
