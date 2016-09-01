@@ -11,7 +11,7 @@ from pipeline.objects import PipelineResult
 import numpy as np
 
 
-def raw_frames_generator(path_video, format='hevc'):
+def raw_frames_generator(path_video, format='autodect'):
     "iterates over the frame of the video. The video "
     container = av.open(path_video, format=format)
     assert(len(container.streams) == 1)
