@@ -11,9 +11,9 @@ from pipeline.objects import PipelineResult
 import numpy as np
 
 
-def raw_frames_generator(path_video):
+def raw_frames_generator(path_video, format='hevc'):
     "iterates over the frame of the video. The video "
-    container = av.open(path_video)
+    container = av.open(path_video, format=format)
     assert(len(container.streams) == 1)
     video = container.streams[0]
     for packet in container.demux(video):
