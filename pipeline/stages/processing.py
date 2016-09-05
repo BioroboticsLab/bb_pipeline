@@ -1,6 +1,7 @@
 import numbers
 
 import cv2
+import composer.core as composer
 import numpy as np
 from skimage.exposure import equalize_hist
 from skimage.feature import peak_local_max
@@ -11,7 +12,7 @@ from bb_binary import parse_image_fname
 from diktya.func_api_helpers import load_model, predict_wrapper
 from diktya.distributions import DistributionCollection
 from pipeline.stages.stage import PipelineStage
-from pipeline.objects import DecoderRegions, Filename, Image, Timestamp, \
+from pipeline.objects import CamParameter, DecoderRegions, Filename, Image, Timestamp, \
     CameraIndex, Positions, HivePositions, Orientations, IDs, Saliencies, \
     PipelineResult, Candidates, Regions, Descriptors, LocalizerInputImage, \
     SaliencyImage, PaddedImage, PaddedCandidates, LocalizerShapes, Radii, \
@@ -187,12 +188,16 @@ class Decoder(PipelineStage):
 
 
 class CoordinateMapper(PipelineStage):
-    requires = [Positions]
+    requires = [Positions, CamParameter, CameraIndex]
     provides = [HivePositions]
 
-    def call(self, pos):
-        # TODO: map coordinates
-        return pos
+    def call(self, pos, cam_param, camIdx):
+        c = composer.Composer()
+        c.load_arguments(cam_param)
+        pos[:, [0, 1]] = pos[:, [1, 0]]  # swapping y, x -> x,y
+        pos = np.array([pos])
+        pos = c.map_coordinate(pos, camIdx)
+        return pos[0]
 
 
 class ResultMerger(PipelineStage):

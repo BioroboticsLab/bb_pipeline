@@ -8,5 +8,8 @@ pytest>=2.8.5
 pytest-cov>=2.2.1
 pytest-flake8>=0.5
 cairocffi>=0.7
+keras==1.0.6
+h5py
 git+https://github.com/BioroboticsLab/bb_binary.git#egg=bb_binary
 git+https://github.com/BioroboticsLab/diktya.git#egg=diktya
+git+https://github.com/gitmirgut/bb_composer.git#egg=bb_composer

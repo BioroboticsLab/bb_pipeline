@@ -73,6 +73,10 @@ class Filename(FilenameDescription):
     pass
 
 
+class CamParameter(FilenameDescription):
+    pass
+
+
 class Image(NumpyArrayDescription):
     ndim = 2
 
