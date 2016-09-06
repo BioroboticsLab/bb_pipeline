@@ -51,7 +51,7 @@ install:
 - pip install --upgrade coveralls
 - pip install -e .
 script:
-- LD_LIBRARY_PATH="$HOME/ffmpeg/lib/:$LD_LIBRARY_PATH" py.test -v
+- LD_LIBRARY_PATH="$HOME/ffmpeg/lib/:$LD_LIBRARY_PATH" PATH="$HOME/ffmpeg/bin/":$PATH py.test -v
 - sphinx-build docs _build/html
 after_success:
 - coveralls
