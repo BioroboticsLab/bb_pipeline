@@ -197,8 +197,9 @@ class CoordinateMapper(PipelineStage):
         pos[:, [0, 1]] = pos[:, [1, 0]]  # swapping y, x -> x,y
         pos = np.array([pos])
         pos = c.map_coordinate(pos, camIdx)
+        pos = pos[0]
         pos[:, [0, 1]] = pos[:, [1, 0]]  # swapping back
-        return pos[0]
+        return pos
 
 
 class ResultMerger(PipelineStage):
