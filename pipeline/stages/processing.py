@@ -14,7 +14,8 @@ from pipeline.stages.stage import PipelineStage
 from pipeline.objects import DecoderRegions, Filename, Image, Timestamp, \
     CameraIndex, Positions, HivePositions, Orientations, IDs, Saliencies, \
     PipelineResult, Candidates, Regions, Descriptors, LocalizerInputImage, \
-    SaliencyImage, PaddedImage, PaddedCandidates, LocalizerShapes
+    SaliencyImage, PaddedImage, PaddedCandidates, LocalizerShapes, Radii, \
+    DecoderPredictions
 
 
 class ImageReader(PipelineStage):
@@ -23,8 +24,8 @@ class ImageReader(PipelineStage):
 
     def call(self, fname):
         image = imread(fname)
-        camIdx, dt = parse_image_fname(fname, 'beesbook')
-        return image, dt, camIdx
+        camIdx, dt = parse_image_fname(fname)
+        return image, dt.timestamp(), camIdx
 
 
 class LocalizerPreprocessor(PipelineStage):
@@ -89,6 +90,8 @@ class Localizer(PipelineStage):
             if roi_orig.shape == roi_shape:
                 rois.append(roi_orig)
                 mask[idx] = 1
+        if not rois:
+            raise Exception("No rois found")
         rois = np.stack(rois, axis=0)[:, np.newaxis]
         return rois, mask
 
@@ -149,7 +152,7 @@ class DecoderPreprocessor(PipelineStage):
 
 class Decoder(PipelineStage):
     requires = [DecoderRegions, Candidates]
-    provides = [Positions, Orientations, IDs]
+    provides = [Positions, Orientations, IDs, Radii, DecoderPredictions]
 
     def __init__(self, model_path):
         self.model = load_model(model_path)
@@ -179,7 +182,8 @@ class Decoder(PipelineStage):
         x_rot = predictions['x_rotation']
         orientations = np.hstack((z_rot, y_rot, x_rot))
         positions = candidates + predictions['center']
-        return [positions, orientations, ids]
+        radii = predictions['radius']
+        return [positions, orientations, ids, radii, predictions]
 
 
 class CoordinateMapper(PipelineStage):
@@ -192,16 +196,17 @@ class CoordinateMapper(PipelineStage):
 
 
 class ResultMerger(PipelineStage):
-    requires = [Positions, HivePositions, Orientations, IDs, Saliencies]
+    requires = [Positions, HivePositions, Orientations, IDs, Saliencies, Radii]
     provides = [PipelineResult]
 
-    def call(self, positions, hive_positions, orientations, ids, saliencies):
+    def call(self, positions, hive_positions, orientations, ids, saliencies, radii):
         return PipelineResult(
             positions,
             hive_positions,
             orientations,
             ids,
-            saliencies
+            saliencies,
+            radii
         )
 
 

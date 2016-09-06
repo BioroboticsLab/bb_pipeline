@@ -7,12 +7,13 @@ class PipelineObject(object):
 
 
 class PipelineResult(PipelineObject):
-    def __init__(self, positions, hive_positions, orientations, ids, saliencies):
+    def __init__(self, positions, hive_positions, orientations, ids, saliencies, radii):
         self.positions = positions
         self.hive_positions = hive_positions
         self.orientations = orientations
         self.ids = ids
         self.saliencies = saliencies
+        self.radii = radii
 
 
 class PipelineObjectDescription(object):
@@ -111,6 +112,11 @@ class Candidates(NumpyArrayDescription):
     pass
 
 
+class Radii(NumpyArrayDescription):
+    ''' Radii of localized tags '''
+    pass
+
+
 class PaddedCandidates(NumpyArrayDescription):
     ''' Center positions of localized tags (padded image coordinates) '''
     pass
@@ -157,4 +163,8 @@ class SaliencyOverlay(NumpyArrayDescription):
 
 
 class FinalResultOverlay(NumpyArrayDescription):
+    pass
+
+
+class DecoderPredictions(NumpyArrayDescription):
     pass

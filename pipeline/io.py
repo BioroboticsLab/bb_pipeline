@@ -1,8 +1,6 @@
 import hashlib
-from datetime import datetime
 from itertools import chain
 import uuid
-import pytz
 import os
 import subprocess as sp
 from bb_binary import DataSource, FrameContainer, \
@@ -12,15 +10,24 @@ import numpy as np
 
 
 class VideoReader:
-    def __init__(self, video_path, ffmpeg_bin='ffmpeg', ffprobe_bin='ffprobe'):
+    def __init__(self, video_path,
+                 format='guess_on_ext',
+                 ffmpeg_bin='ffmpeg', ffprobe_bin='ffprobe'):
+        if format == 'guess_on_ext':
+            format = self.guess_format_on_extension(video_path)
+
         vidread_command = [
             ffmpeg_bin,
             '-i', video_path,
             '-f', 'image2pipe',
-            '-vsync', '0',
             '-pix_fmt', 'gray',
+            '-vsync', '0',
             '-vcodec', 'rawvideo', '-'
         ]
+
+        if format is not None:
+            vidread_command.insert(1, '-vcodec')
+            vidread_command.insert(2, format)
 
         resolution_command = [
             ffprobe_bin,
@@ -39,6 +46,17 @@ class VideoReader:
                                    stdout=sp.PIPE,
                                    bufsize=self.w * self.h * 1)
         self.frames = 0
+
+    @staticmethod
+    def guess_format_on_extension(video_path):
+        _, ext = os.path.splitext(video_path)
+        if ext == '.mkv':
+            format = None
+        elif ext == '.avi':
+            format = 'hevc'
+        else:
+            raise Exception("Unknown extension {}.".format(ext))
+        return format
 
     def __iter__(self):
         return self
@@ -134,7 +152,7 @@ class BBBinaryRepoSink(Sink):
                 db.yRotation = float(detection.orientations[i, 1])
                 db.xRotation = float(detection.orientations[i, 2])
                 db.localizerSaliency = float(detection.saliencies[i, 0])
-                db.radius = float(0)
+                db.radius = float(detection.radii[i])
                 decodedId = db.init('decodedId', len(detection.ids[i]))
                 for j, bit in enumerate(detection.ids[i]):
                     decodedId[j] = int(round(255*bit))
@@ -142,9 +160,8 @@ class BBBinaryRepoSink(Sink):
 
 
 def get_timestamps(fname_video, path_filelists, ts_format='2015'):
-    def get_flist_name(ts):
+    def get_flist_name(dt_utc):
         fmt = '%Y%m%d'
-        dt_utc = datetime.fromtimestamp(ts, tz=pytz.utc)
         dt = dt_utc.astimezone(get_timezone())
         if ts_format == '2014':
             return dt.strftime(fmt) + '.txt'
@@ -159,8 +176,8 @@ def get_timestamps(fname_video, path_filelists, ts_format='2015'):
                 return os.path.join(path, name)
         assert False, 'File {} not found in: {}'.format(name, path)
 
-    cam, from_ts, to_ts = parse_video_fname(fname_video)
-    txt_files = set([get_flist_name(from_ts), get_flist_name(to_ts)])
+    cam, from_dt, to_dt = parse_video_fname(fname_video)
+    txt_files = set([get_flist_name(from_dt), get_flist_name(to_dt)])
     txt_paths = [find_file(f, path_filelists) for f in txt_files]
 
     image_fnames = list(chain.from_iterable([open(path, 'r').readlines() for path in txt_paths]))
@@ -169,4 +186,4 @@ def get_timestamps(fname_video, path_filelists, ts_format='2015'):
     image_fnames.sort()
 
     fnames = image_fnames[image_fnames.index(first_fname):image_fnames.index(second_fname) + 1]
-    return [parse_image_fname(fn, format='beesbook')[1] for fn in fnames]
+    return [parse_image_fname(fn, format='beesbook')[1].timestamp() for fn in fnames]
