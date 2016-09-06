@@ -94,7 +94,7 @@ class LocalizerInputImage(NumpyArrayDescription):
 
 
 class Regions(NumpyArrayDescription):
-    ''' Image patches of candidates (original image size) '''
+    ''' Image patches for localizer positions (at original image scale) '''
     ndim = 4
 
 
@@ -107,7 +107,7 @@ class Saliencies(NumpyArrayDescription):
     pass
 
 
-class Candidates(NumpyArrayDescription):
+class LocalizerPositions(NumpyArrayDescription):
     ''' Center positions of localized tags (original image coordinates) '''
     pass
 
@@ -117,7 +117,7 @@ class Radii(NumpyArrayDescription):
     pass
 
 
-class PaddedCandidates(NumpyArrayDescription):
+class PaddedLocalizerPositions(NumpyArrayDescription):
     ''' Center positions of localized tags (padded image coordinates) '''
     pass
 
@@ -150,7 +150,7 @@ class IDs(NumpyArrayDescription):
     pass
 
 
-class CandidateOverlay(NumpyArrayDescription):
+class LocalizerPositionsOverlay(NumpyArrayDescription):
     pass
 
 

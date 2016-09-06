@@ -4,9 +4,8 @@ import os
 import pickle
 from pipeline import Pipeline
 from pipeline.pipeline import get_auto_config
-
-from pipeline.objects import Filename, Candidates, IDs, Saliencies, Orientations, Image, \
-    SaliencyImage
+from pipeline.objects import Filename, LocalizerPositions, IDs, Saliencies, \
+    Orientations, Image, SaliencyImage
 
 
 def get_test_fname(name):
@@ -49,8 +48,8 @@ def pipeline_results(pipeline_config, bees_image, outdir):
             outputs = pickle.load(f)
     else:
         pipeline = Pipeline([Filename],
-                            [Candidates, IDs, Saliencies, Orientations, Image,
-                             SaliencyImage],
+                            [LocalizerPositions, IDs, Saliencies, Orientations,
+                             Image, SaliencyImage],
                             **pipeline_config)
         outputs = pipeline([bees_image])
         with open(str(output_fname), "wb") as f:

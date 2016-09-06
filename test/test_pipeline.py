@@ -17,8 +17,8 @@ from pipeline.stages import Localizer, PipelineStage, ImageReader, \
     ResultCrownVisualizer, LocalizerVisualizer, SaliencyVisualizer
 
 from pipeline.objects import Filename, Image, Timestamp, CameraIndex, IDs, \
-    PipelineResult, Candidates, Regions, Descriptors, LocalizerInputImage, \
-    SaliencyImage, PaddedCandidates, PaddedImage, Orientations, LocalizerShapes, \
+    PipelineResult, LocalizerPositions, Regions, Descriptors, LocalizerInputImage, \
+    SaliencyImage, PaddedLocalizerPositions, PaddedImage, Orientations, LocalizerShapes, \
     Radii
 from bb_binary import Repository, DataSource, FrameContainer
 
@@ -80,7 +80,7 @@ def test_imagereader(bees_image, pipeline_config):
 
 
 def test_localizer(pipeline_config):
-    pipeline = Pipeline([Filename], [Regions, Candidates], **pipeline_config)
+    pipeline = Pipeline([Filename], [Regions, LocalizerPositions], **pipeline_config)
 
     expected_stages = [ImageReader,
                        LocalizerPreprocessor,
@@ -93,21 +93,21 @@ def test_localizer(pipeline_config):
 
     assert len(outputs) == 2
     assert Regions in outputs
-    assert Candidates in outputs
+    assert LocalizerPositions in outputs
 
     regions = outputs[Regions]
     assert(len(regions) > 0)
 
-    candidates = outputs[Candidates]
-    assert(len(regions) == len(candidates))
+    positions = outputs[LocalizerPositions]
+    assert(len(regions) == len(positions))
 
-    for candidate in candidates:
-        assert(candidate[0] >= 0 and candidate[0] < 3000)
-        assert(candidate[1] >= 0 and candidate[1] < 4000)
+    for pos in positions:
+        assert(pos[0] >= 0 and pos[0] < 3000)
+        assert(pos[1] >= 0 and pos[1] < 4000)
 
 
 def test_padding(pipeline_config):
-    pipeline = Pipeline([Filename], [PaddedCandidates, Candidates,
+    pipeline = Pipeline([Filename], [PaddedLocalizerPositions, LocalizerPositions,
                                      PaddedImage, Image, LocalizerShapes],
                         **pipeline_config)
 
@@ -116,16 +116,17 @@ def test_padding(pipeline_config):
 
     assert len(outputs) == 5
     assert PaddedImage in outputs
-    assert PaddedCandidates in outputs
+    assert PaddedLocalizerPositions in outputs
 
     offset = outputs[LocalizerShapes]['roi_size'] // 2
-    for padded, original in zip(outputs[PaddedCandidates], outputs[Candidates]):
+    for padded, original in zip(outputs[PaddedLocalizerPositions],
+                                outputs[LocalizerPositions]):
         assert(all([(pc - offset) == oc for pc, oc in zip(padded, original)]))
 
 
 @pytest.mark.slow
 def test_decoder(pipeline_config):
-    pipeline = Pipeline([Filename], [Candidates, IDs, Radii], **pipeline_config)
+    pipeline = Pipeline([Filename], [LocalizerPositions, IDs, Radii], **pipeline_config)
 
     expected_stages = [ImageReader,
                        LocalizerPreprocessor,
@@ -140,17 +141,17 @@ def test_decoder(pipeline_config):
 
     assert len(outputs) == 3
     assert IDs in outputs
-    assert Candidates in outputs
+    assert LocalizerPositions in outputs
     assert Radii in outputs
 
-    candidates = outputs[Candidates]
+    positions = outputs[LocalizerPositions]
     ids = outputs[IDs]
     radii = outputs[Radii]
 
-    assert(len(ids) == len(candidates))
+    assert(len(ids) == len(positions))
     assert(len(ids) == len(radii))
 
-    for pos, id, radius in zip(candidates, ids, radii):
+    for pos, id, radius in zip(positions, ids, radii):
         pos = np.round(pos).astype(np.int)
         id = ''.join([str(int(b)) for b in (np.round(id))])
         print('Detection at ({}, {}) \t ID: {} \t Radius: {}'.format(pos[0], pos[1], id, radius))
@@ -278,7 +279,7 @@ def test_localizer_visualizer(pipeline_results, bees_image, outdir):
     res = pipeline_results
     vis = LocalizerVisualizer(roi_overlay='circle')
     name, _ = os.path.splitext(os.path.basename(bees_image))
-    overlay, = vis(res[Image], res[Candidates], {'roi_size': 100})
+    overlay, = vis(res[Image], res[LocalizerPositions], {'roi_size': 100})
     imsave(str(outdir.join(name + "_localizer.png")), overlay)
 
 
@@ -294,7 +295,8 @@ def test_crown_visualiser_on_a_image(pipeline_results, bees_image, outdir):
     vis = ResultCrownVisualizer()
     res = pipeline_results
     img = res[Image]
-    overlay, = vis(res[Image], res[Candidates], res[Orientations], res[IDs])
+    overlay, = vis(res[Image], res[LocalizerPositions],
+                   res[Orientations], res[IDs])
     overlay = zoom(overlay, (0.5, 0.5, 1), order=1)
     img = zoom(img, 0.5, order=3) / 255.
     img_with_overlay = ResultCrownVisualizer.add_overlay(img, overlay)

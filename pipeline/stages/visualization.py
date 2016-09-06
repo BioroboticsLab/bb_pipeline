@@ -7,7 +7,7 @@ import matplotlib
 
 from pipeline.stages.stage import PipelineStage
 from pipeline.objects import Image, Orientations, IDs, SaliencyOverlay, \
-    Candidates, CandidateOverlay, FinalResultOverlay, SaliencyImage, \
+    LocalizerPositions, LocalizerPositionsOverlay, FinalResultOverlay, SaliencyImage, \
     CrownOverlay, LocalizerShapes
 
 
@@ -35,8 +35,8 @@ class SaliencyVisualizer(PipelineStage):
 
 
 class LocalizerVisualizer(PipelineStage):
-    requires = [Image, Candidates, LocalizerShapes]
-    provides = [CandidateOverlay]
+    requires = [Image, LocalizerPositions, LocalizerShapes]
+    provides = [LocalizerPositionsOverlay]
 
     def __init__(self, roi_overlay='circle'):
         assert roi_overlay in ('rect', 'circle')
@@ -96,17 +96,17 @@ class LocalizerVisualizer(PipelineStage):
 
         return overlay
 
-    def call(self, image, candidates, shapes):
+    def call(self, image, positions, shapes):
         roi_size = shapes['roi_size']
 
         if self.roi_overlay == 'rect':
-            return self.get_roi_overlay(candidates, image / 255., roi_size)
+            return self.get_roi_overlay(positions, image / 255., roi_size)
         else:
-            return self.get_circle_overlay(candidates, image / 255.)
+            return self.get_circle_overlay(positions, image / 255.)
 
 
 class ResultCrownVisualizer(PipelineStage):
-    requires = [Image, Candidates, Orientations, IDs]
+    requires = [Image, LocalizerPositions, Orientations, IDs]
     provides = [CrownOverlay]
 
     def __init__(self, outer_radius=60, inner_radius=32,
@@ -121,17 +121,17 @@ class ResultCrownVisualizer(PipelineStage):
         self.orientation_hue = orientation_hue
         self.line_width = line_width
 
-    def call(self, image, candidates, orientations, ids):
+    def call(self, image, positions, orientations, ids):
         import cairocffi as cairo
         z_rots = orientations[:, 0]
-        candidates = np.stack([candidates[:, 1], candidates[:, 0]], axis=-1)
+        positions = np.stack([positions[:, 1], positions[:, 0]], axis=-1)
         height, width = image.shape
         # hsva
         # avsh
         image_surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
         ctx = cairo.Context(image_surface)
         ctx.set_antialias(cairo.ANTIALIAS_NONE)
-        for z, pos, id in zip(z_rots, candidates, ids):
+        for z, pos, id in zip(z_rots, positions, ids):
             self._draw_crown(ctx, z, pos, id)
         image_surface.flush()
         overlay = np.ndarray(shape=(height, width, 4),
@@ -205,7 +205,8 @@ class ResultCrownVisualizer(PipelineStage):
 
 
 class ResultVisualizer(PipelineStage):
-    requires = [CandidateOverlay, Candidates, Orientations, IDs]
+    requires = [LocalizerPositionsOverlay, LocalizerPositions,
+                Orientations, IDs]
     provides = [FinalResultOverlay]
 
     @staticmethod
@@ -218,7 +219,7 @@ class ResultVisualizer(PipelineStage):
         cv2.arrowedLine(overlay, tuple(position), (x_to, y_to),
                         arrow_color, line_width, cv2.LINE_AA)
 
-    def call(self, overlay, candidates, orientations, ids,
+    def call(self, overlay, positions, orientations, ids,
              arrow_length=150,
              line_width=6,
              font_size=1.5,
@@ -227,8 +228,8 @@ class ResultVisualizer(PipelineStage):
              text_offset=(-180, -60),
              arrow_color=(255, 0, 0)):
         overlay = (np.copy(overlay) * 255).astype(np.uint8)
-        for idx in range(len(candidates)):
-            pos = candidates[idx, ::-1].astype(np.int32)
+        for idx in range(len(positions)):
+            pos = positions[idx, ::-1].astype(np.int32)
             ResultVisualizer.draw_arrow(overlay, orientations[idx, 0], pos,
                                         line_width, arrow_length, arrow_color)
         return overlay

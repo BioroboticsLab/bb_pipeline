@@ -13,8 +13,8 @@ from diktya.distributions import DistributionCollection
 from pipeline.stages.stage import PipelineStage
 from pipeline.objects import DecoderRegions, Filename, Image, Timestamp, \
     CameraIndex, Positions, HivePositions, Orientations, IDs, Saliencies, \
-    PipelineResult, Candidates, Regions, Descriptors, LocalizerInputImage, \
-    SaliencyImage, PaddedImage, PaddedCandidates, LocalizerShapes, Radii, \
+    PipelineResult, LocalizerPositions, Regions, Descriptors, LocalizerInputImage, \
+    SaliencyImage, PaddedImage, PaddedLocalizerPositions, LocalizerShapes, Radii, \
     DecoderPredictions
 
 
@@ -60,7 +60,8 @@ class LocalizerPreprocessor(PipelineStage):
 
 class Localizer(PipelineStage):
     requires = [LocalizerInputImage, PaddedImage, LocalizerShapes]
-    provides = [Regions, SaliencyImage, Saliencies, Candidates, PaddedCandidates]
+    provides = [Regions, SaliencyImage, Saliencies, LocalizerPositions,
+                PaddedLocalizerPositions]
 
     def __init__(self,
                  model_path,
@@ -70,18 +71,18 @@ class Localizer(PipelineStage):
         self.model._make_predict_function()
 
     @staticmethod
-    def extract_saliencies(candidates, saliency):
-        saliencies = np.zeros((len(candidates), 1))
-        for idx, (r, c) in enumerate(candidates):
+    def extract_saliencies(positions, saliency):
+        saliencies = np.zeros((len(positions), 1))
+        for idx, (r, c) in enumerate(positions):
             saliencies[idx] = saliency[r, c]
         return saliencies
 
     @staticmethod
-    def extract_rois(candidates, image, roi_size):
+    def extract_rois(positions, image, roi_size):
         roi_shape = (roi_size, roi_size)
         rois = []
-        mask = np.zeros((len(candidates),), dtype=np.bool_)
-        for idx, (r, c) in enumerate(candidates):
+        mask = np.zeros((len(positions),), dtype=np.bool_)
+        for idx, (r, c) in enumerate(positions):
             rh = roi_shape[0] / 2
             ch = roi_shape[1] / 2
             # probably introducing a bias here
@@ -95,14 +96,14 @@ class Localizer(PipelineStage):
         rois = np.stack(rois, axis=0)[:, np.newaxis]
         return rois, mask
 
-    def get_candidates(self, saliency, dist):
+    def get_positions(self, saliency, dist):
         assert (isinstance(dist, numbers.Integral))
         dist = int(dist)
         below_thresh = saliency < self.saliency_threshold
         im = saliency.copy()
         im[below_thresh] = 0.
-        candidates = peak_local_max(im, min_distance=dist)
-        return candidates
+        positions = peak_local_max(im, min_distance=dist)
+        return positions
 
     def call(self, image, orig_image, shapes):
         roi_size = shapes['roi_size']
@@ -119,20 +120,20 @@ class Localizer(PipelineStage):
         saliency = gaussian_filter(saliency, sigma=3/4)
 
         # 64 is tag size, 2 * 2 due to downsampling in saliency network
-        candidates = self.get_candidates(saliency, dist=int(64 / (2 * 2 * scale_factor) - 1))
-        saliencies = self.extract_saliencies(candidates, saliency)
+        positions_down = self.get_positions(saliency, dist=int(64 / (2 * 2 * scale_factor) - 1))
+        saliencies = self.extract_saliencies(positions_down, saliency)
 
         # TODO: investigate source of offset
         # probably a bias in the localizer train data caused by the old pipeline
         offset = 6
         # simulate reverse padding and downsampling of saliency network
-        padded_candidates = (((candidates + 2) * 2 + 2) * 2 + 2) * scale_factor + offset
-        candidates_img = padded_candidates - pad_size
+        padded_positions = (((positions_down + 2) * 2 + 2) * 2 + 2) * scale_factor + offset
+        postions_img = padded_positions - pad_size
 
-        rois, mask = self.extract_rois(padded_candidates, orig_image, roi_size)
+        rois, mask = self.extract_rois(padded_positions, orig_image, roi_size)
         rois = rois.astype(np.float32) / 255.
 
-        return [rois, saliency, saliencies, candidates_img, padded_candidates]
+        return [rois, saliency, saliencies, postions_img, padded_positions]
 
 
 class DecoderPreprocessor(PipelineStage):
@@ -151,7 +152,7 @@ class DecoderPreprocessor(PipelineStage):
 
 
 class Decoder(PipelineStage):
-    requires = [DecoderRegions, Candidates]
+    requires = [DecoderRegions, LocalizerPositions]
     provides = [Positions, Orientations, IDs, Radii, DecoderPredictions]
 
     def __init__(self, model_path):
@@ -173,7 +174,7 @@ class Decoder(PipelineStage):
                 structed_array[name] = arr
         return structed_array
 
-    def call(self, regions, candidates):
+    def call(self, regions, positions):
         predictions_norm = self.predict(regions)
         predictions = self.distribution.denormalize(predictions_norm)
         ids = predictions['bits']
@@ -181,7 +182,7 @@ class Decoder(PipelineStage):
         y_rot = predictions['y_rotation']
         x_rot = predictions['x_rotation']
         orientations = np.hstack((z_rot, y_rot, x_rot))
-        positions = candidates + predictions['center']
+        positions = positions + predictions['center']
         radii = predictions['radius']
         return [positions, orientations, ids, radii, predictions]
 
