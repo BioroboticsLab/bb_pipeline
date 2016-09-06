@@ -26,6 +26,6 @@ setup(
         'pipeline.stages'
     ],
     package_data={
-        '': ['pipeline/config.ini']
+        'pipeline': ['pipeline/config.ini']
     }
 )
