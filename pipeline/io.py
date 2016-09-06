@@ -1,35 +1,71 @@
-import av
 import hashlib
 from datetime import datetime
 from itertools import chain
 import uuid
 import pytz
 import os
+import subprocess as sp
 from bb_binary import DataSource, FrameContainer, \
     parse_image_fname, parse_video_fname, get_timezone
 from pipeline.objects import PipelineResult
 import numpy as np
 
 
-def raw_frames_generator(path_video):
-    "iterates over the frame of the video. The video "
-    container = av.open(path_video)
-    assert(len(container.streams) == 1)
-    video = container.streams[0]
-    for packet in container.demux(video):
-        for frame in packet.decode():
-            reformated = frame.reformat(format='gray8')
-            if(len(reformated.planes) != 1):
-                raise Exception("Cannot convert frame to numpy array.")
-            arr = np.frombuffer(reformated.planes[0], np.dtype('uint8'))
-            yield arr.reshape(reformated.height, reformated.width).copy()
+class VideoReader:
+    def __init__(self, video_path, ffmpeg_bin='ffmpeg', ffprobe_bin='ffprobe'):
+        vidread_command = [
+            ffmpeg_bin,
+            '-i', video_path,
+            '-f', 'image2pipe',
+            '-vsync', '0',
+            '-pix_fmt', 'gray',
+            '-vcodec', 'rawvideo', '-'
+        ]
+
+        resolution_command = [
+            ffprobe_bin,
+            '-v', 'error',
+            '-of', 'flat=s=_',
+            '-select_streams', 'v:0',
+            '-show_entries', 'stream=height,width',
+            video_path
+        ]
+
+        pipe = sp.Popen(resolution_command, stdout=sp.PIPE, stderr=sp.PIPE)
+        infos = pipe.stdout.readlines()
+        self.w, self.h = [int(s.decode('utf-8').strip().split('=')[1]) for s in infos]
+
+        self.video_pipe = sp.Popen(vidread_command,
+                                   stdout=sp.PIPE,
+                                   bufsize=self.w * self.h * 1)
+        self.frames = 0
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return self.next()
+
+    def next(self):
+        raw_image = self.video_pipe.stdout.read(self.h * self.w * 1)
+
+        if len(raw_image) != self.h * self.w * 1:
+            assert(len(raw_image) == 0)
+            raise StopIteration()
+
+        self.frames += 1
+
+        image = np.fromstring(raw_image, dtype='uint8')
+        image = image.reshape((self.h, self.w))
+        self.video_pipe.stdout.flush()
+        return image
 
 
 def video_generator(path_video, path_filelists):
     fname_video = os.path.basename(path_video)
     timestamps = get_timestamps(fname_video, path_filelists)
     data_source = DataSource.new_message(filename=fname_video)
-    for i, frame in enumerate(raw_frames_generator(path_video)):
+    for i, frame in enumerate(VideoReader(path_video)):
         img = frame
         yield data_source, img, timestamps[i]
 

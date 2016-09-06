@@ -42,7 +42,6 @@ install:
   h5py pillow scikit-image pandas scikit-learn pytz joblib sphinx
 - source activate test-environment
 - conda install -q -c https://conda.binstar.org/menpo opencv3
-- PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$HOME/ffmpeg/lib/pkgconfig" pip install av
 - pip install theano
 - pip install keras==1.0.6
 - CC=/usr/bin/gcc-4.9 CXX=/usr/bin/g++-4.9 pip install pycapnp
