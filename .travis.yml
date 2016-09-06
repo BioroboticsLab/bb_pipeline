@@ -48,6 +48,7 @@ install:
 - CC=/usr/bin/gcc-4.9 CXX=/usr/bin/g++-4.9 pip install pycapnp
 - pip install git+https://github.com/BioroboticsLab/bb_binary.git#egg=bb_binary
 - pip install git+https://github.com/BioroboticsLab/diktya.git#egg=diktya
+- pip install git+https://github.com/gitmirgut/bb_composer.git#egg=bb_composer
 - pip install --upgrade pytest pytest-benchmark pytest-cov pytest-xdist pytest-flake8
 - pip install --upgrade coveralls
 - pip install -e .
