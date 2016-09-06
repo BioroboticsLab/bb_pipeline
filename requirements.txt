@@ -6,6 +6,5 @@ joblib>=0.9.0
 pytest>=2.8.5
 pytest-cov>=2.2.1
 pytest-flake8>=0.5
-cairocffi>=0.7
 git+https://github.com/BioroboticsLab/bb_binary.git#egg=bb_binary
 git+https://github.com/BioroboticsLab/diktya.git#egg=diktya

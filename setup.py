@@ -17,6 +17,9 @@ setup(
     },
     install_requires=reqs,
     dependency_links=dep_links,
+    extras_require={
+        'ResultCrownVisualizer': ['cairocffi']
+    },
     packages=[
         'pipeline',
         'pipeline.scripts',

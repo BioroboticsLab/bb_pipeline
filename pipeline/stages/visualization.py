@@ -1,4 +1,3 @@
-import cairocffi as cairo
 import cv2
 import numpy as np
 from skimage.color import hsv2rgb, rgb2hsv, gray2rgb
@@ -63,6 +62,8 @@ class LocalizerVisualizer(PipelineStage):
     @staticmethod
     def get_circle_overlay(coordinates, image, radius=32, line_width=8,
                            color=(1., 0, 0)):
+        import cairocffi as cairo
+
         height, width = image.shape[:2]
         if image.ndim == 2:
             overlay = np.stack([image, image, image], axis=-1)
@@ -71,7 +72,6 @@ class LocalizerVisualizer(PipelineStage):
         else:
             raise Exception("Did not understand image shape {}.".format(image.shape))
 
-        import cairocffi as cairo
         image_surface = cairo.ImageSurface(cairo.FORMAT_A8, image.shape[1], image.shape[0])
         ctx = cairo.Context(image_surface)
         for x, y in coordinates:
@@ -122,6 +122,7 @@ class ResultCrownVisualizer(PipelineStage):
         self.line_width = line_width
 
     def call(self, image, candidates, orientations, ids):
+        import cairocffi as cairo
         z_rots = orientations[:, 0]
         candidates = np.stack([candidates[:, 1], candidates[:, 0]], axis=-1)
         height, width = image.shape
@@ -145,7 +146,7 @@ class ResultCrownVisualizer(PipelineStage):
         r, g, b = hsv2rgb(np.array([[[h, s, v]]])).flatten().tolist()
         return (b, g, r, alpha)
 
-    def _draw_crown(self, ctx: cairo.Context, angle, pos, bits):
+    def _draw_crown(self, ctx, angle, pos, bits):
         def x(w):
             return float(np.cos(w))
 
