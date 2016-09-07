@@ -26,8 +26,11 @@ def process_video(video_path, text_root_path, repo_output_path, rank):
     info('Parsed camId = {}'.format(camId))
     gen_processor = GeneratorProcessor(pipeline, lambda: BBBinaryRepoSink(repo, camId=camId))
 
+    log_callback = lambda frame_idx: info('Processing frame {} from {}'.format(frame_idx,
+                                                                               video_path))
+
     info('Processing video frames from {}'.format(video_path))
-    gen_processor(video_generator(video_path, text_root_path))
+    gen_processor(video_generator(video_path, text_root_path, log_callback))
 
 
 def parse_args(comm):

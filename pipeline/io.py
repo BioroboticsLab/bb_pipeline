@@ -80,11 +80,13 @@ class VideoReader:
         return image
 
 
-def video_generator(path_video, path_filelists):
+def video_generator(path_video, path_filelists, log_callback=None):
     fname_video = os.path.basename(path_video)
     timestamps = get_timestamps(fname_video, path_filelists)
     data_source = DataSource.new_message(filename=fname_video)
     for i, frame in enumerate(VideoReader(path_video)):
+        if log_callback is not None:
+            log_callback(i)
         img = frame
         yield data_source, img, timestamps[i]
 
