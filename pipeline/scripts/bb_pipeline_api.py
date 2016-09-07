@@ -8,7 +8,7 @@ import numpy as np
 from flask import Flask, request
 from scipy.misc import imread
 from pipeline import Pipeline
-from pipeline.objects import Image, Candidates, Saliencies, IDs
+from pipeline.objects import Image, LocalizerPositions, Saliencies, IDs
 from pipeline.pipeline import get_auto_config
 
 app = Flask(__name__)
@@ -16,7 +16,7 @@ app = Flask(__name__)
 
 def init_pipeline():
     pipeline = Pipeline([Image],
-                        [Candidates, Saliencies, IDs],
+                        [LocalizerPositions, Saliencies, IDs],
                         **get_auto_config())
     return pipeline
 
