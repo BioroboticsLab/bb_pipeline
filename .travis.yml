@@ -17,8 +17,6 @@ addons:
     - gcc-4.9
     - g++-4.9
     - python-opencv
-    - libopenmpi-dev
-    - libopenmpi-bin
 before_install:
 - CI_HOME=`pwd`
 - export THREADS=$((`nproc` + 1))

@@ -1,7 +1,13 @@
 import os
 import pytest
 
-from pipeline.scripts.bb_pipeline_mpi import process_video as mpi_process_video
+try:
+    import mpi4py  # noqa
+    from pipeline.scripts.bb_pipeline_mpi import process_video as mpi_process_video
+    run_mpi_test = True
+except ImportError:
+    run_mpi_test = False
+
 from pipeline.scripts.bb_pipeline import process_video as cmdline_process_video
 from bb_binary import Repository, FrameContainer
 
@@ -24,6 +30,7 @@ def check_repo(path, bees_video):
 
 
 @pytest.mark.slow
+@pytest.mark.skipif(not run_mpi_test, reason='mpi4py not installed')
 def test_mpi_process_function(tmpdir, bees_video, filelists_path, pipeline_config):
     mpi_process_video(bees_video, filelists_path, str(tmpdir), 0)
 
