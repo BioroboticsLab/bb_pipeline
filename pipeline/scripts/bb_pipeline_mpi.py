@@ -73,9 +73,9 @@ if __name__ == '__main__':
 
         if (len(video_paths)) != comm.Get_size():
             logger.error(('Process was started with {} processes, but `{}` contains ' +
-                         '{} paths. Aborting.').format(comm.Get_size(),
-                                                       video_list_path,
-                                                       len(video_paths)))
+                          '{} paths. Aborting.').format(comm.Get_size(),
+                                                        video_list_path,
+                                                        len(video_paths)))
             sys.stderr.flush()
             abort = True
 
