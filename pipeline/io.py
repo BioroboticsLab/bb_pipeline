@@ -44,6 +44,7 @@ class VideoReader:
 
         self.video_pipe = sp.Popen(vidread_command,
                                    stdout=sp.PIPE,
+                                   stderr=sp.PIPE,
                                    bufsize=self.w * self.h * 1)
         self.frames = 0
 
