@@ -8,7 +8,7 @@ dep_links = [str(req_line.url) for req_line in install_reqs]
 
 setup(
     name='bb_pipeline',
-    version='0.0.1',
+    version='0.1.0',
     description='',
     entry_points={
         'console_scripts': [
