@@ -62,7 +62,7 @@ def parse_args(comm):
     return args
 
 
-if __name__ == '__main__':
+def main():
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
 
@@ -92,3 +92,7 @@ if __name__ == '__main__':
                       rank)
 
     comm.Barrier()
+
+
+if __name__ == '__main__':
+    main()
