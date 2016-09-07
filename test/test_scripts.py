@@ -2,7 +2,8 @@ import os
 import pytest
 
 try:
-    import mpi4py  # noqa
+    from mpi4py import MPI # noqa
+    from pipeline.scripts.bb_pipeline_mpi import Mutex
     from pipeline.scripts.bb_pipeline_mpi import process_video as mpi_process_video
     run_mpi_test = True
 except ImportError:
@@ -32,7 +33,11 @@ def check_repo(path, bees_video):
 @pytest.mark.slow
 @pytest.mark.skipif(not run_mpi_test, reason='mpi4py not installed')
 def test_mpi_process_function(tmpdir, bees_video, filelists_path, pipeline_config):
-    mpi_process_video(bees_video, filelists_path, str(tmpdir), 0)
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    mutex = Mutex(comm)
+
+    mpi_process_video(bees_video, filelists_path, str(tmpdir), rank, mutex)
 
     check_repo(str(tmpdir), bees_video)
 

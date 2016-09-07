@@ -125,7 +125,7 @@ class BBBinaryRepoSink(Sink):
         data_source_idx = self.data_sources_fname.index(fname)
         self.frames.append((data_source_idx, detections, timestamp))
 
-    def finish(self):
+    def _get_container(self):
         self.frames.sort(key=lambda x: x[2])
         start_ts = self.frames[0][2]
         end_ts = self.frames[-1][2]
@@ -159,7 +159,21 @@ class BBBinaryRepoSink(Sink):
                 decodedId = db.init('decodedId', len(detection.ids[i]))
                 for j, bit in enumerate(detection.ids[i]):
                     decodedId[j] = int(round(255*bit))
-        self.repo.add(fc)
+
+        return fc
+
+    def finish(self):
+        self.repo.add(self._get_container())
+
+
+class LockedBBBinaryRepoSink(BBBinaryRepoSink):
+    def __init__(self, repo, camId, mutex):
+        self.mutex = mutex
+        super().__init__(repo, camId)
+
+    def finish(self):
+        with self.mutex:
+            self.repo.add(self._get_container())
 
 
 def get_timestamps(fname_video, path_filelists, ts_format='2015'):

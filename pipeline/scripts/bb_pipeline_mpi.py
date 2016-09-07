@@ -7,12 +7,70 @@ from mpi4py import MPI
 from pipeline import Pipeline
 from pipeline.cmdline import logger, get_shared_positional_arguments
 from pipeline.pipeline import GeneratorProcessor, get_auto_config
-from pipeline.io import BBBinaryRepoSink, video_generator
+from pipeline.io import LockedBBBinaryRepoSink, video_generator
 from pipeline.objects import PipelineResult, Image, Timestamp
 from bb_binary import Repository, parse_video_fname
 
+from array import array as _array
+import struct as _struct
 
-def process_video(video_path, text_root_path, repo_output_path, rank):
+
+# source: https://github.com/mpi4py/mpi4py/blob/master/demo/nxtval/nxtval-mpi3.py
+class Counter:
+    def __init__(self, comm):
+        rank = comm.Get_rank()
+        itemsize = MPI.INT.Get_size()
+        if rank == 0:
+            n = 1
+        else:
+            n = 0
+        self.win = MPI.Win.Allocate(n*itemsize, itemsize,
+                                    MPI.INFO_NULL, comm)
+        if rank == 0:
+            mem = self.win.memory
+            mem[:] = _struct.pack('i', 0)
+
+    def free(self):
+        self.win.Free()
+
+    def next(self, increment=1):
+        incr = _array('i', [increment])
+        nval = _array('i', [0])
+        self.win.Lock(0)
+        self.win.Get_accumulate([incr, 1, MPI.INT],
+                                [nval, 1, MPI.INT],
+                                0, op=MPI.SUM)
+        self.win.Unlock(0)
+        return nval[0]
+
+
+# source: https://github.com/mpi4py/mpi4py/blob/master/demo/nxtval/nxtval-mpi3.py
+class Mutex:
+    def __init__(self, comm):
+        self.counter = Counter(comm)
+
+    def __enter__(self):
+        self.lock()
+        return self
+
+    def __exit__(self, *exc):
+        self.unlock()
+        return None
+
+    def free(self):
+        self.counter.free()
+
+    def lock(self):
+        value = self.counter.next(+1)
+        while value != 0:
+            value = self.counter.next(-1)
+            value = self.counter.next(+1)
+
+    def unlock(self):
+        self.counter.next(-1)
+
+
+def process_video(video_path, text_root_path, repo_output_path, rank, mutex):
     info = lambda msg: logger.info('Process {}: {}'.format(rank, msg))
     config = get_auto_config()
 
@@ -24,7 +82,10 @@ def process_video(video_path, text_root_path, repo_output_path, rank):
 
     camId, _, _ = parse_video_fname(video_path)
     info('Parsed camId = {}'.format(camId))
-    gen_processor = GeneratorProcessor(pipeline, lambda: BBBinaryRepoSink(repo, camId=camId))
+    gen_processor = GeneratorProcessor(pipeline,
+                                       lambda: LockedBBBinaryRepoSink(repo,
+                                                                      camId=camId,
+                                                                      mutex=mutex))
 
     log_callback = lambda frame_idx: info('Processing frame {} from {}'.format(frame_idx,
                                                                                video_path))
@@ -65,6 +126,7 @@ def parse_args(comm):
 def main():
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
+    mutex = Mutex(comm)
 
     video_list_path, text_root_path, repo_output_path = parse_args(comm)
 
@@ -89,7 +151,8 @@ def main():
         process_video(video_paths[rank],
                       text_root_path,
                       repo_output_path,
-                      rank)
+                      rank,
+                      mutex)
 
     comm.Barrier()
 
