@@ -21,7 +21,7 @@ setup(
     install_requires=reqs,
     dependency_links=dep_links,
     extras_require={
-        'ResultCrownVisualizer': ['cairocffi']
+        'ResultCrownVisualizer': ['cairocffi'],
         'bb_pipeline_mpi': ['mpi4py']
     },
     packages=[
