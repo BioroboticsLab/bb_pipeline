@@ -74,11 +74,12 @@ def process_video(video_path, text_root_path, repo_output_path, rank, mutex):
     info = lambda msg: logger.info('Process {}: {}'.format(rank, msg))
     config = get_auto_config()
 
-    info('Initializing pipeline')
-    pipeline = Pipeline([Image, Timestamp], [PipelineResult], **config)
+    with mutex:
+        info('Initializing pipeline')
+        pipeline = Pipeline([Image, Timestamp], [PipelineResult], **config)
 
-    info('Loading bb_binary repository {}'.format(repo_output_path))
-    repo = Repository(repo_output_path)
+        info('Loading bb_binary repository {}'.format(repo_output_path))
+        repo = Repository(repo_output_path)
 
     camId, _, _ = parse_video_fname(video_path)
     info('Parsed camId = {}'.format(camId))
