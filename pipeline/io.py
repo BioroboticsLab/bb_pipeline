@@ -11,8 +11,10 @@ import numpy as np
 
 class VideoReader:
     def __init__(self, video_path,
+                 ffmpeg_stderr_fd=None,
                  format='guess_on_ext',
-                 ffmpeg_bin='ffmpeg', ffprobe_bin='ffprobe'):
+                 ffmpeg_bin='ffmpeg',
+                 ffprobe_bin='ffprobe'):
         if format == 'guess_on_ext':
             format = self.guess_format_on_extension(video_path)
 
@@ -44,8 +46,7 @@ class VideoReader:
 
         self.video_pipe = sp.Popen(vidread_command,
                                    stdout=sp.PIPE,
-                                   stderr=sp.PIPE,
-                                   bufsize=self.w * self.h * 1)
+                                   stderr=ffmpeg_stderr_fd)
         self.frames = 0
 
     @staticmethod
@@ -80,11 +81,11 @@ class VideoReader:
         return image
 
 
-def video_generator(path_video, path_filelists, log_callback=None):
+def video_generator(path_video, path_filelists, log_callback=None, stderr_fd=None):
     fname_video = os.path.basename(path_video)
     timestamps = get_timestamps(fname_video, path_filelists)
     data_source = DataSource.new_message(filename=fname_video)
-    for i, frame in enumerate(VideoReader(path_video)):
+    for i, frame in enumerate(VideoReader(path_video, stderr_fd)):
         if log_callback is not None:
             log_callback(i)
         img = frame
