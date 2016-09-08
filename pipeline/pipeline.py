@@ -201,7 +201,8 @@ class Pipeline(object):
 
 def _get_cache_dir(name):
     cache_dir = os.path.expanduser('~/.cache/bb_pipeline')
-    os.makedirs(cache_dir, exist_ok=True)
+    if not os.path.isdir(cache_dir):
+        os.makedirs(cache_dir)
     return os.path.join(cache_dir, name)
 
 
