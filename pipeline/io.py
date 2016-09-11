@@ -81,6 +81,11 @@ class VideoReader:
         return image
 
 
+def raw_frames_generator(path_video, format='guess_on_ext', stderr_fd=None):
+    "yields the frames of the video."
+    return VideoReader(path_video, stderr_fd)
+
+
 def video_generator(path_video, path_filelists, log_callback=None, stderr_fd=None):
     fname_video = os.path.basename(path_video)
     timestamps = get_timestamps(fname_video, path_filelists)
