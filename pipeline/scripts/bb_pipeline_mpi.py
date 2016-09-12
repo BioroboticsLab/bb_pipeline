@@ -1,92 +1,41 @@
 #!/usr/bin/env python3
 
 import argparse
+import os
 import sys
 from mpi4py import MPI
 
-from pipeline import Pipeline
-from pipeline.cmdline import logger, get_shared_positional_arguments
-from pipeline.pipeline import GeneratorProcessor, get_auto_config
-from pipeline.io import LockedBBBinaryRepoSink, video_generator
-from pipeline.objects import PipelineResult, Image, Timestamp
-from bb_binary import Repository, parse_video_fname
 
-from array import array as _array
-import struct as _struct
-
-
-# source: https://github.com/mpi4py/mpi4py/blob/master/demo/nxtval/nxtval-mpi3.py
-class Counter:
-    def __init__(self, comm):
-        rank = comm.Get_rank()
-        itemsize = MPI.INT.Get_size()
-        if rank == 0:
-            n = 1
-        else:
-            n = 0
-        self.win = MPI.Win.Allocate(n*itemsize, itemsize,
-                                    MPI.INFO_NULL, comm)
-        if rank == 0:
-            mem = self.win.memory
-            mem[:] = _struct.pack('i', 0)
-
-    def free(self):
-        self.win.Free()
-
-    def next(self, increment=1):
-        incr = _array('i', [increment])
-        nval = _array('i', [0])
-        self.win.Lock(0)
-        self.win.Get_accumulate([incr, 1, MPI.INT],
-                                [nval, 1, MPI.INT],
-                                0, op=MPI.SUM)
-        self.win.Unlock(0)
-        return nval[0]
-
-
-# source: https://github.com/mpi4py/mpi4py/blob/master/demo/nxtval/nxtval-mpi3.py
-class Mutex:
-    def __init__(self, comm):
-        self.counter = Counter(comm)
-
-    def __enter__(self):
-        self.lock()
-        return self
-
-    def __exit__(self, *exc):
-        self.unlock()
-        return None
-
-    def free(self):
-        self.counter.free()
-
-    def lock(self):
-        value = self.counter.next(+1)
-        while value != 0:
-            value = self.counter.next(-1)
-            value = self.counter.next(+1)
-
-    def unlock(self):
-        self.counter.next(-1)
-
-
-def process_video(video_path, text_root_path, repo_output_path, rank, mutex):
+def process_video(video_path, text_root_path, repo_output_path, rank):
     info = lambda msg: logger.info('Process {}: {}'.format(rank, msg))
+
+    import theano
+    import keras
+    from pipeline import Pipeline
+    from pipeline.cmdline import logger
+    from pipeline.pipeline import GeneratorProcessor, get_auto_config
+    from pipeline.io import BBBinaryRepoSink, video_generator
+    from pipeline.objects import PipelineResult, Image, Timestamp
+    from bb_binary import Repository, parse_video_fname
+
+    repo_output_path = os.path.join(repo_output_path, 'process_{}'.format(rank))
+
+    info('Theano compile dir: {}'.format(theano.config.base_compiledir))
+    info('Keras base dir: {}'.format(keras.backend._keras_base_dir))
+    info('Output dir: {}'.format(repo_output_path))
+
     config = get_auto_config()
 
-    with mutex:
-        info('Initializing pipeline')
-        pipeline = Pipeline([Image, Timestamp], [PipelineResult], **config)
+    info('Initializing pipeline')
+    pipeline = Pipeline([Image, Timestamp], [PipelineResult], **config)
 
-        info('Loading bb_binary repository {}'.format(repo_output_path))
-        repo = Repository(repo_output_path)
+    info('Loading bb_binary repository {}'.format(repo_output_path))
+    repo = Repository(repo_output_path)
 
     camId, _, _ = parse_video_fname(video_path)
     info('Parsed camId = {}'.format(camId))
     gen_processor = GeneratorProcessor(pipeline,
-                                       lambda: LockedBBBinaryRepoSink(repo,
-                                                                      camId=camId,
-                                                                      mutex=mutex))
+                                       lambda: BBBinaryRepoSink(repo, camId=camId))
 
     log_callback = lambda frame_idx: info('Processing frame {} from {}'.format(frame_idx,
                                                                                video_path))
@@ -97,6 +46,8 @@ def process_video(video_path, text_root_path, repo_output_path, rank, mutex):
 
 
 def parse_args(comm):
+    from pipeline.cmdline import get_shared_positional_arguments
+
     parser = argparse.ArgumentParser(
         prog='BeesBook MPI batch processor',
         description='Batch process video using the beesbook pipeline')
@@ -128,7 +79,16 @@ def parse_args(comm):
 def main():
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
-    mutex = Mutex(comm)
+
+    if 'PBS_O_WORKDIR' in os.environ:
+        compile_dir = '{}/theano_compile_process_{}'.format(os.environ['PBS_O_WORKDIR'], rank)
+        os.environ["THEANO_FLAGS"] = ("base_compiledir='{}'".format(compile_dir))
+
+        keras_base_dir = '{}/keras_base_process_{}'.format(os.environ['PBS_O_WORKDIR'], rank)
+        os.environ['KERAS_BASE_DIR'] = keras_base_dir
+
+    from pipeline.cmdline import logger
+    info = lambda msg: logger.info('Process {}: {}'.format(rank, msg))
 
     video_list_path, text_root_path, repo_output_path = parse_args(comm)
 
@@ -153,10 +113,11 @@ def main():
         process_video(video_paths[rank],
                       text_root_path,
                       repo_output_path,
-                      rank,
-                      mutex)
+                      rank)
 
+    info('Processing finished. Reached final barrier.')
     comm.Barrier()
+    info('Exiting.')
 
 
 if __name__ == '__main__':
