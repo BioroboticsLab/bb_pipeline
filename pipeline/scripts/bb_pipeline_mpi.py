@@ -107,7 +107,6 @@ def main():
             abort = True
 
     abort = comm.bcast(abort, root=0)
-    comm.Barrier()
 
     if not abort:
         process_video(video_paths[rank],
@@ -115,8 +114,6 @@ def main():
                       repo_output_path,
                       rank)
 
-    info('Processing finished. Reached final barrier.')
-    comm.Barrier()
     info('Exiting.')
 
 
