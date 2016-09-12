@@ -21,7 +21,6 @@ def process_video(video_path, text_root_path, repo_output_path, rank):
     repo_output_path = os.path.join(repo_output_path, 'process_{}'.format(rank))
 
     info('Theano compile dir: {}'.format(theano.config.base_compiledir))
-    info('Keras base dir: {}'.format(keras.backend._keras_base_dir))
     info('Output dir: {}'.format(repo_output_path))
 
     config = get_auto_config()
@@ -83,9 +82,6 @@ def main():
     if 'PBS_O_WORKDIR' in os.environ:
         compile_dir = '{}/theano_compile_process_{}'.format(os.environ['PBS_O_WORKDIR'], rank)
         os.environ["THEANO_FLAGS"] = ("base_compiledir='{}'".format(compile_dir))
-
-        keras_base_dir = '{}/keras_base_process_{}'.format(os.environ['PBS_O_WORKDIR'], rank)
-        os.environ['KERAS_BASE_DIR'] = keras_base_dir
 
     from pipeline.cmdline import logger
     info = lambda msg: logger.info('Process {}: {}'.format(rank, msg))
