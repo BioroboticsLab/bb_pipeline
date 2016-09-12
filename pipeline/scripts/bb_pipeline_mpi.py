@@ -10,7 +10,6 @@ def process_video(video_path, text_root_path, repo_output_path, rank):
     info = lambda msg: logger.info('Process {}: {}'.format(rank, msg))
 
     import theano
-    import keras
     from pipeline import Pipeline
     from pipeline.cmdline import logger
     from pipeline.pipeline import GeneratorProcessor, get_auto_config
