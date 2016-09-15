@@ -122,11 +122,6 @@ class PaddedLocalizerPositions(NumpyArrayDescription):
     pass
 
 
-class DecoderRegions(NumpyArrayDescription):
-    ''' Blurred image patches for Decoder '''
-    pass
-
-
 class Descriptors(NumpyArrayDescription):
     ''' Output of Autoencoder for each Candidate '''
     pass

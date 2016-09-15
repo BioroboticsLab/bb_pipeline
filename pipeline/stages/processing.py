@@ -8,10 +8,10 @@ from skimage.io import imread
 from scipy.ndimage import zoom
 from scipy.ndimage.filters import gaussian_filter
 from bb_binary import parse_image_fname
-from diktya.func_api_helpers import load_model, predict_wrapper
+from diktya.func_api_helpers import load_model, predict_wrapper, get_hdf5_attr
 from diktya.distributions import DistributionCollection
 from pipeline.stages.stage import PipelineStage
-from pipeline.objects import DecoderRegions, Filename, Image, Timestamp, \
+from pipeline.objects import Filename, Image, Timestamp, \
     CameraIndex, Positions, HivePositions, Orientations, IDs, Saliencies, \
     PipelineResult, LocalizerPositions, Regions, Descriptors, LocalizerInputImage, \
     SaliencyImage, PaddedImage, PaddedLocalizerPositions, LocalizerShapes, Radii, \
@@ -136,35 +136,33 @@ class Localizer(PipelineStage):
         return [rois, saliency, saliencies, postions_img, padded_positions]
 
 
-class DecoderPreprocessor(PipelineStage):
-    requires = [Regions, LocalizerShapes]
-    provides = [DecoderRegions]
-
-    def call(self, rois, shapes):
-        roi_size = shapes['roi_size']
-        # decoder expects input shape [samples, 1, 64, 64]
-        crop_size = (roi_size - 64) // 2
-
-        cropped_rois = rois[:, :, crop_size:-crop_size, crop_size:-crop_size]
-        cropped_rois = np.stack([equalize_hist(roi) for roi in cropped_rois])
-
-        return cropped_rois * 2 - 1
-
-
 class Decoder(PipelineStage):
-    requires = [DecoderRegions, LocalizerPositions]
+    requires = [Regions, LocalizerPositions]
     provides = [Positions, Orientations, IDs, Radii, DecoderPredictions]
 
     def __init__(self, model_path):
         self.model = load_model(model_path)
+        self.uses_hist_equalization = get_hdf5_attr(
+            model_path, 'decoder_uses_hist_equalization', True)
         self.distribution = DistributionCollection.from_hdf5(model_path)
         self._predict = predict_wrapper(self.model.predict, self.model.output_names)
         self.model._make_predict_function()
 
+    def preprocess(self, regions):
+        roi_size = regions.shape[-1]
+        # decoder expects input shape [samples, 1, 64, 64]
+        crop_size = (roi_size - 64) // 2
+
+        cropped_rois = regions[:, :, crop_size:-crop_size, crop_size:-crop_size]
+        if self.uses_hist_equalization:
+            cropped_rois = np.stack([equalize_hist(roi) for roi in cropped_rois])
+            cropped_rois = 2 * cropped_rois - 1
+        return cropped_rois
+
     def predict(self, regions):
         structed_array = np.zeros((len(regions),),
                                   dtype=self.distribution.norm_dtype)
-        predictions = self._predict(regions)
+        predictions = self._predict(self.preprocess(regions))
         for name, arr in predictions.items():
             if name.startswith('bit_'):
                 bit_idx = int(name.split('_')[1])

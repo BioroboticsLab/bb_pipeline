@@ -2,7 +2,7 @@ from pipeline.stages import stage
 from pipeline.stages.stage import PipelineStage
 
 from pipeline.stages.processing import ImageReader, LocalizerPreprocessor, \
-    Localizer, DecoderPreprocessor, Decoder, CoordinateMapper, ResultMerger, \
+    Localizer, Decoder, CoordinateMapper, ResultMerger, \
     TagSimilarityEncoder
 from pipeline.stages.visualization import LocalizerVisualizer, ResultVisualizer, \
     ResultCrownVisualizer, SaliencyVisualizer
@@ -11,7 +11,6 @@ from pipeline.stages.visualization import LocalizerVisualizer, ResultVisualizer,
 Stages = (ImageReader,
           LocalizerPreprocessor,
           Localizer,
-          DecoderPreprocessor,
           Decoder,
           CoordinateMapper,
           ResultMerger,
