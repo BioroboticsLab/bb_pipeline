@@ -132,9 +132,10 @@ class BBBinaryRepoSink(Sink):
         self.frames.append((data_source_idx, detections, timestamp))
 
     def _get_container(self):
-        self.frames.sort(key=lambda x: x[2])
-        start_ts = self.frames[0][2]
-        end_ts = self.frames[-1][2]
+        TIMESTAMP_IDX = 2
+        self.frames.sort(key=lambda x: x[TIMESTAMP_IDX])
+        start_ts = self.frames[0][TIMESTAMP_IDX]
+        end_ts = self.frames[-1][TIMESTAMP_IDX]
         fc = FrameContainer.new_message(fromTimestamp=start_ts,
                                         toTimestamp=end_ts,
                                         camId=self.camId,
@@ -142,6 +143,7 @@ class BBBinaryRepoSink(Sink):
         dataSources = fc.init('dataSources', len(self.data_sources))
         for i, dsource in enumerate(self.data_sources):
             dataSources[i] = dsource
+            dataSources[i].idx = int(i)
 
         frames = fc.init('frames', len(self.frames))
         for i, (data_source_idx, detection, timestamp) in enumerate(self.frames):
@@ -151,20 +153,20 @@ class BBBinaryRepoSink(Sink):
             frame.timestamp = timestamp
             detections_builder = frame.detectionsUnion.init(
                 'detectionsDP', len(detection.positions))
-            for i, db in enumerate(detections_builder):
-                db.idx = i
-                db.xpos = int(detection.positions[i, 0])
-                db.ypos = int(detection.positions[i, 1])
-                db.xposHive = int(detection.hive_positions[i, 0])
-                db.yposHive = int(detection.hive_positions[i, 1])
-                db.zRotation = float(detection.orientations[i, 0])
-                db.yRotation = float(detection.orientations[i, 1])
-                db.xRotation = float(detection.orientations[i, 2])
-                db.localizerSaliency = float(detection.saliencies[i, 0])
-                db.radius = float(detection.radii[i])
-                decodedId = db.init('decodedId', len(detection.ids[i]))
-                for j, bit in enumerate(detection.ids[i]):
-                    decodedId[j] = int(round(255*bit))
+            for j, db in enumerate(detections_builder):
+                db.idx = j
+                db.xpos = int(detection.positions[j, 0])
+                db.ypos = int(detection.positions[j, 1])
+                db.xposHive = int(detection.hive_positions[j, 0])
+                db.yposHive = int(detection.hive_positions[j, 1])
+                db.zRotation = float(detection.orientations[j, 0])
+                db.yRotation = float(detection.orientations[j, 1])
+                db.xRotation = float(detection.orientations[j, 2])
+                db.localizerSaliency = float(detection.saliencies[j, 0])
+                db.radius = float(detection.radii[j])
+                decodedId = db.init('decodedId', len(detection.ids[j]))
+                for k, bit in enumerate(detection.ids[j]):
+                    decodedId[k] = int(round(255*bit))
 
         return fc
 
@@ -178,8 +180,9 @@ class LockedBBBinaryRepoSink(BBBinaryRepoSink):
         super().__init__(repo, camId)
 
     def finish(self):
+        container = self._get_container()
         with self.mutex:
-            self.repo.add(self._get_container())
+            self.repo.add(container)
 
 
 def get_timestamps(fname_video, path_filelists, ts_format='2015'):

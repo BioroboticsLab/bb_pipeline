@@ -21,8 +21,7 @@ class GeneratorProcessor(object):
         if type(pipelines) == Pipeline:
             pipelines = [pipelines]
         self.pipelines = pipelines
-        self.parallel = Parallel(n_jobs=len(pipelines), backend='threading',
-                                 pre_dispatch='2.*n_jobs')
+        self.parallel = Parallel(n_jobs=len(pipelines), backend='threading')
         self.sink_factory = sink_factory
 
     def __call__(self, generator):
