@@ -13,7 +13,7 @@ from pipeline import Pipeline
 from pipeline.pipeline import GeneratorProcessor, get_auto_config
 from pipeline.io import BBBinaryRepoSink, video_generator
 from pipeline.stages import Localizer, PipelineStage, ImageReader, \
-    LocalizerPreprocessor, TagSimilarityEncoder, Decoder, DecoderPreprocessor, \
+    LocalizerPreprocessor, TagSimilarityEncoder, Decoder, \
     ResultCrownVisualizer, LocalizerVisualizer, SaliencyVisualizer
 
 from pipeline.objects import Filename, Image, Timestamp, CameraIndex, IDs, \
@@ -131,7 +131,6 @@ def test_decoder(pipeline_config):
     expected_stages = [ImageReader,
                        LocalizerPreprocessor,
                        Localizer,
-                       DecoderPreprocessor,
                        Decoder]
     _assert_types(pipeline.pipeline, expected_stages)
 
