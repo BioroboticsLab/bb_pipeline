@@ -150,7 +150,6 @@ class Decoder(PipelineStage):
         self.model._make_predict_function()
 
     def preprocess(self, regions):
-        roi_size = regions.shape[-1]
         # decoder expects input shape [samples, 1, 64, 64]
         crop = CropTransformation(translation=0, crop_shape=(64, 64))
         cropped_rois = crop(regions)
