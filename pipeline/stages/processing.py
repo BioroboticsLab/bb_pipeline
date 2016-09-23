@@ -10,6 +10,7 @@ from scipy.ndimage.filters import gaussian_filter
 from bb_binary import parse_image_fname
 from diktya.func_api_helpers import load_model, predict_wrapper, get_hdf5_attr
 from diktya.distributions import DistributionCollection
+from diktya.preprocessing.image import CropTransformation
 from pipeline.stages.stage import PipelineStage
 from pipeline.objects import Filename, Image, Timestamp, \
     CameraIndex, Positions, HivePositions, Orientations, IDs, Saliencies, \
@@ -151,9 +152,8 @@ class Decoder(PipelineStage):
     def preprocess(self, regions):
         roi_size = regions.shape[-1]
         # decoder expects input shape [samples, 1, 64, 64]
-        crop_size = (roi_size - 64) // 2
-
-        cropped_rois = regions[:, :, crop_size:-crop_size, crop_size:-crop_size]
+        crop = CropTransformation(translation=0, crop_shape=(64, 64))
+        cropped_rois = crop(regions)
         if self.uses_hist_equalization:
             cropped_rois = np.stack([equalize_hist(roi) for roi in cropped_rois])
             cropped_rois = 2 * cropped_rois - 1
