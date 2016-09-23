@@ -195,17 +195,18 @@ class CoordinateMapper(PipelineStage):
 
 
 class ResultMerger(PipelineStage):
-    requires = [Positions, HivePositions, Orientations, IDs, Saliencies, Radii]
+    requires = [Positions, HivePositions, Orientations, IDs, Saliencies, Radii, Descriptors]
     provides = [PipelineResult]
 
-    def call(self, positions, hive_positions, orientations, ids, saliencies, radii):
+    def call(self, positions, hive_positions, orientations, ids, saliencies, radii, descriptors):
         return PipelineResult(
             positions,
             hive_positions,
             orientations,
             ids,
             saliencies,
-            radii
+            radii,
+            descriptors
         )
 
 
@@ -228,6 +229,14 @@ class TagSimilarityEncoder(PipelineStage):
             out = (out << 1) | int(bit)
         return out
 
+    @staticmethod
+    def bit_array_to_ints(a, int_len=8):
+        assert(len(a) % int_len == 0)
+        ints = []
+        for start_idx in range(len(a) // 8):
+            ints.append(TagSimilarityEncoder.bit_array_to_int(a[start_idx:start_idx+int_len]))
+        return ints
+
     def call(self, regions):
         # crop images to match input shape of model
         _, _, lx, ly = regions.shape
@@ -241,6 +250,6 @@ class TagSimilarityEncoder(PipelineStage):
         predictions = np.where(predictions == 0, -1, predictions)
         predictions = (predictions + 1) * 0.5
 
-        predictions = np.array([TagSimilarityEncoder.bit_array_to_int(pred)
+        predictions = np.array([self.bit_array_to_ints(pred)
                                 for pred in predictions])
         return [predictions]
