@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
 import argparse
+import atexit
 import os
+import shutil
 import sys
 from mpi4py import MPI
 
@@ -74,6 +76,10 @@ def parse_args(comm):
     return args
 
 
+def delete_folder(path):
+    shutil.rmtree(path)
+
+
 def main():
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
@@ -81,6 +87,8 @@ def main():
     if 'PBS_O_WORKDIR' in os.environ:
         compile_dir = '{}/theano_compile_process_{}'.format(os.environ['PBS_O_WORKDIR'], rank)
         os.environ["THEANO_FLAGS"] = ("base_compiledir='{}'".format(compile_dir))
+
+        atexit.register(delete_folder, compile_dir)
 
     from pipeline.cmdline import logger
     info = lambda msg: logger.info('Process {}: {}'.format(rank, msg))
