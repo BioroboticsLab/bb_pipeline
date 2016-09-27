@@ -199,7 +199,10 @@ class Pipeline(object):
 
 
 def _get_cache_dir(name):
-    cache_dir = os.path.expanduser('~/.cache/bb_pipeline')
+    if 'BB_PIPELINE_CACHE_DIR' in os.environ:
+        cache_dir = os.environ['BB_PIPELINE_CACHE_DIR']
+    else:
+        cache_dir = os.path.expanduser('~/.cache/bb_pipeline')
     if not os.path.isdir(cache_dir):
         os.makedirs(cache_dir)
     return os.path.join(cache_dir, name)
