@@ -84,8 +84,8 @@ def main():
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
 
-    if 'PBS_O_WORKDIR' in os.environ:
-        compile_dir = '{}/theano_compile_process_{}'.format(os.environ['PBS_O_WORKDIR'], rank)
+    if 'PIPELINE_TMP_DIR' in os.environ:
+        compile_dir = '{}/theano_compile_process_{}'.format(os.environ['PIPELINE_TMP_DIR'], rank)
         os.environ["THEANO_FLAGS"] = ("base_compiledir='{}'".format(compile_dir))
 
         atexit.register(delete_folder, compile_dir)
