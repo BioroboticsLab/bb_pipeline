@@ -4,7 +4,6 @@ import argparse
 import atexit
 import os
 import shutil
-import sys
 from mpi4py import MPI
 
 
@@ -97,25 +96,16 @@ def main():
 
     video_paths = [s.strip() for s in open(video_list_path, 'r').readlines()]
 
-    abort = False
     if rank is 0:
         logger.info('There are {} processes'.format(comm.Get_size()))
 
-        if (len(video_paths)) != comm.Get_size():
-            logger.error(('Process was started with {} processes, but `{}` contains ' +
-                          '{} paths. Aborting.').format(comm.Get_size(),
-                                                        video_list_path,
-                                                        len(video_paths)))
-            sys.stderr.flush()
-            abort = True
-
-    abort = comm.bcast(abort, root=0)
-
-    if not abort:
+    if rank < len(video_paths):
         process_video(video_paths[rank],
                       text_root_path,
                       repo_output_path,
                       rank)
+    else:
+        logger.warning('Process {}: No file to process'.format(rank))
 
     info('Exiting.')
 
