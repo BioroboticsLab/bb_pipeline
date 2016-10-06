@@ -177,6 +177,32 @@ def test_config_dict(pipeline_config):
 
 
 @pytest.mark.slow
+def test_no_detection(tmpdir, pipeline_config):
+    repo = Repository(str(tmpdir))
+    sink = BBBinaryRepoSink(repo, camId=0)
+
+    pipeline = Pipeline([Image, Timestamp], [PipelineResult], **pipeline_config)
+
+    image = np.zeros((3000, 4000), dtype=np.uint8)
+
+    results = pipeline([image, 0])
+    data_source = DataSource.new_message(filename='source')
+    sink.add_frame(data_source, results, 0)
+    sink.finish()
+
+    assert(len(list(repo.iter_fnames())) == 1)
+
+    for fname in repo.iter_fnames():
+        with open(fname, 'rb') as f:
+            fc = FrameContainer.read(f)
+            assert(len(fc.frames) == 1)
+            assert fc.dataSources[0].filename == 'source'
+
+            frame = fc.frames[0]
+            assert(len(frame.detectionsUnion.detectionsDP) == 0)
+
+
+@pytest.mark.slow
 def test_generator_processor(tmpdir, bees_image, pipeline_config):
     def image_generator():
         ts = time.time()
