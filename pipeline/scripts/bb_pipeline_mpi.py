@@ -107,6 +107,8 @@ def main():
     else:
         logger.warning('Process {}: No file to process'.format(rank))
 
+    info('Reached Barrier.')
+    comm.Barrier()
     info('Exiting.')
 
 
