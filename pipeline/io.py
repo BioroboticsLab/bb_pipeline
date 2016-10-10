@@ -177,17 +177,6 @@ class BBBinaryRepoSink(Sink):
         self.repo.add(self._get_container())
 
 
-class LockedBBBinaryRepoSink(BBBinaryRepoSink):
-    def __init__(self, repo, camId, mutex):
-        self.mutex = mutex
-        super().__init__(repo, camId)
-
-    def finish(self):
-        container = self._get_container()
-        with self.mutex:
-            self.repo.add(container)
-
-
 def get_timestamps(fname_video, path_filelists, ts_format='2015'):
     def get_flist_name(dt_utc):
         fmt = '%Y%m%d'
