@@ -1,3 +1,4 @@
+from datetime import timedelta
 import hashlib
 from itertools import chain
 import uuid
@@ -192,11 +193,19 @@ def get_timestamps(fname_video, path_filelists, ts_format='2015'):
         for root, dirs, files in os.walk(path):
             if name in [os.path.join(os.path.basename(root), f) for f in files]:
                 return os.path.join(path, name)
-        assert False, 'File {} not found in: {}'.format(name, path)
+        return None
+
+    def next_day(dt):
+        return dt + timedelta(days=1)
 
     cam, from_dt, to_dt = parse_video_fname(fname_video)
-    txt_files = set([get_flist_name(from_dt), get_flist_name(to_dt)])
+    # due to a bug in the data aquistion software we have to check in the
+    # filename list of the next day as well
+    timestamps = [from_dt, to_dt, next_day(from_dt), next_day(to_dt)]
+    txt_files = set([get_flist_name(dt) for dt in timestamps])
     txt_paths = [find_file(f, path_filelists) for f in txt_files]
+    txt_paths = [path for path in txt_paths if path is not None]
+    assert len(txt_paths) > 0
 
     image_fnames = list(chain.from_iterable([open(path, 'r').readlines() for path in txt_paths]))
     first_fname = fname_video.split('_TO_')[0] + '.jpeg\n'
