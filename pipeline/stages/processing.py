@@ -213,8 +213,8 @@ class TagSimilarityEncoder(PipelineStage):
     requires = [Regions]
     provides = [Descriptors]
 
-    def __init__(self, **config):
-        self.model = load_model(config['model_path'])
+    def __init__(self, model_path):
+        self.model = load_model(model_path)
         # We can't use model.compile because it requires an optimizer and a loss function.
         # Since we only use the model for inference, we call the private function
         # _make_predict_function(). This is exactly what keras would do otherwise the first
@@ -245,10 +245,10 @@ class TagSimilarityEncoder(PipelineStage):
         regions = regions[:, :, slice_x, slice_y]
         predictions = self.model.predict(regions)
         # thresholding predictions
-        predictions = np.sign(predictions)
-        predictions = np.where(predictions == 0, -1, predictions)
-        predictions = (predictions + 1) * 0.5
+        #predictions = np.sign(predictions)
+        #predictions = np.where(predictions == 0, -1, predictions)
+        #predictions = (predictions + 1) * 0.5
 
-        predictions = np.array([self.bit_array_to_ints(pred)
-                                for pred in predictions])
-        return [predictions]
+        #predictions = np.array([self.bit_array_to_ints(pred)
+        #                        for pred in predictions])
+        return [predictions.reshape((len(regions),128))]
