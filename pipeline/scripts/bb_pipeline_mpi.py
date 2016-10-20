@@ -76,7 +76,7 @@ def parse_args(comm):
     # can be None
     parsed_args.append(args.text_root_path)
 
-    return args
+    return parsed_args
 
 
 def delete_folder(path):
