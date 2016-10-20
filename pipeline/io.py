@@ -219,6 +219,9 @@ def get_seperate_timestamps(path_video, ts_format, path_filelists):
 
 
 def get_timestamps(path_video, ts_format, path_filelists):
+    # In season 2014 and 2015, the timestamps for each video were stored in a seperate location
+    # from the videos themselves. From 2016 onwards a text file with the timestamps of all frames
+    # is stored next to the videos with the same filename (apart from the extension).
     if ts_format == '2016':
         assert path_filelists is None
         txt_path = path_video.replace('mkv', 'txt')
