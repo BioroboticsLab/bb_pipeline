@@ -48,6 +48,7 @@ def test_process_function(tmpdir, bees_video, filelists_path, pipeline_config):
 
     class Args:
         num_threads = 1
+        timestamp_format = '2015'
         repo_output_path = tmpdir
         video_path = bees_video
         text_root_path = filelists_path

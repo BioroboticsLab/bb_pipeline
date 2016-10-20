@@ -2,12 +2,13 @@
 
 import argparse
 import atexit
+from itertools import chain
 import os
 import shutil
 from mpi4py import MPI
 
 
-def process_video(video_path, text_root_path, repo_output_path, rank):
+def process_video(video_path, repo_output_path, ts_format, text_root_path, rank):
     info = lambda msg: logger.info('Process {}: {}'.format(rank, msg))
 
     import theano
@@ -45,7 +46,7 @@ def process_video(video_path, text_root_path, repo_output_path, rank):
 
 
 def parse_args(comm):
-    from pipeline.cmdline import get_shared_positional_arguments
+    from pipeline.cmdline import get_shared_positional_arguments, get_shared_optional_arguments
 
     parser = argparse.ArgumentParser(
         prog='BeesBook MPI batch processor',
@@ -55,7 +56,7 @@ def parse_args(comm):
                         help='root path of input video list',
                         type=str)
 
-    for arg, kwargs in get_shared_positional_arguments():
+    for arg, kwargs in chain(get_shared_positional_arguments(), get_shared_optional_arguments()):
         parser.add_argument(arg, **kwargs)
 
     args = None
@@ -65,12 +66,15 @@ def parse_args(comm):
     finally:
         args = comm.bcast(args, root=0)
 
-    args = (args.video_list_path, args.text_root_path, args.repo_output_path)
+    parsed_args = [args.video_list_path, args.repo_output_path, args.timestamp_format]
 
-    if any([a is None for a in args]):
+    if any([a is None for a in parsed_args]):
         if comm.Get_rank() == 0:
             print(parser.print_help())
         exit(1)
+
+    # can be None
+    parsed_args.append(args.text_root_path)
 
     return args
 
@@ -92,7 +96,7 @@ def main():
     from pipeline.cmdline import logger
     info = lambda msg: logger.info('Process {}: {}'.format(rank, msg))
 
-    video_list_path, text_root_path, repo_output_path = parse_args(comm)
+    video_list_path, repo_output_path, ts_format, text_root_path = parse_args(comm)
 
     video_paths = [s.strip() for s in open(video_list_path, 'r').readlines()]
 
@@ -101,8 +105,9 @@ def main():
 
     if rank < len(video_paths):
         process_video(video_paths[rank],
-                      text_root_path,
                       repo_output_path,
+                      ts_format,
+                      text_root_path,
                       rank)
     else:
         logger.warning('Process {}: No file to process'.format(rank))

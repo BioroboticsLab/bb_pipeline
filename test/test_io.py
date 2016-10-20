@@ -1,10 +1,20 @@
 from pipeline.io import video_generator, unique_id
 
 
-def test_video_generator(bees_video, filelists_path):
-    gen = video_generator(bees_video, filelists_path)
+def test_video_generator_2015(bees_video, filelists_path):
+    gen = video_generator(bees_video, ts_format='2015', path_filelists=filelists_path)
     results = list(gen)
     assert(len(results) == 3)
+    prev_ts = 0.
+    for _, _, ts in results:
+        assert(ts > prev_ts)
+        prev_ts = ts
+
+
+def test_video_generator_2016(bees_video_2016):
+    gen = video_generator(bees_video_2016, ts_format='2016', path_filelists=None)
+    results = list(gen)
+    assert(len(results) == 4)
     prev_ts = 0.
     for _, _, ts in results:
         assert(ts > prev_ts)

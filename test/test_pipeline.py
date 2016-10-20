@@ -238,7 +238,7 @@ def test_generator_processor_video(tmpdir, bees_video, filelists_path, pipeline_
     gen_processor = GeneratorProcessor(
         pipeline, lambda: BBBinaryRepoSink(repo, camId=0))
 
-    gen = video_generator(bees_video, filelists_path)
+    gen = video_generator(bees_video, ts_format='2015', path_filelists=filelists_path)
 
     gen_processor(gen)
     fnames = list(repo.iter_fnames())
@@ -266,7 +266,7 @@ def test_generator_processor_threads(tmpdir, bees_video, filelists_path, pipelin
     gen_processor = GeneratorProcessor(
         pipelines, lambda: BBBinaryRepoSink(repo, camId=0))
 
-    gen = video_generator(bees_video, filelists_path)
+    gen = video_generator(bees_video, ts_format='2015', path_filelists=filelists_path)
 
     gen_processor(gen)
     fnames = list(repo.iter_fnames())

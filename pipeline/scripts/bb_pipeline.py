@@ -26,7 +26,7 @@ def process_video(args):
     gen_processor = GeneratorProcessor(plines, lambda: BBBinaryRepoSink(repo, camId=camId))
 
     logger.info('Processing video frames from {}'.format(args.video_path))
-    gen_processor(video_generator(args.video_path, args.text_root_path))
+    gen_processor(video_generator(args.video_path, args.timestamp_format, args.text_root_path))
 
 
 def main():

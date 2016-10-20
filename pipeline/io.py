@@ -87,9 +87,10 @@ def raw_frames_generator(path_video, format='guess_on_ext', stderr_fd=None):
     return VideoReader(path_video, stderr_fd)
 
 
-def video_generator(path_video, path_filelists, log_callback=None, stderr_fd=None):
+def video_generator(path_video, ts_format='2016', path_filelists=None,
+                    log_callback=None, stderr_fd=sp.DEVNULL):
+    timestamps = get_timestamps(path_video, ts_format, path_filelists)
     fname_video = os.path.basename(path_video)
-    timestamps = get_timestamps(fname_video, path_filelists)
     data_source = DataSource.new_message(filename=fname_video)
     for i, frame in enumerate(VideoReader(path_video, stderr_fd)):
         if log_callback is not None:
@@ -178,7 +179,7 @@ class BBBinaryRepoSink(Sink):
         self.repo.add(self._get_container())
 
 
-def get_timestamps(fname_video, path_filelists, ts_format='2015'):
+def get_seperate_timestamps(path_video, ts_format, path_filelists):
     def get_flist_name(dt_utc):
         fmt = '%Y%m%d'
         dt = dt_utc.astimezone(get_timezone())
@@ -198,6 +199,7 @@ def get_timestamps(fname_video, path_filelists, ts_format='2015'):
     def next_day(dt):
         return dt + timedelta(days=1)
 
+    fname_video = os.path.basename(path_video)
     cam, from_dt, to_dt = parse_video_fname(fname_video)
     # due to a bug in the data aquistion software we have to check in the
     # filename list of the next day as well
@@ -214,3 +216,16 @@ def get_timestamps(fname_video, path_filelists, ts_format='2015'):
 
     fnames = image_fnames[image_fnames.index(first_fname):image_fnames.index(second_fname) + 1]
     return [parse_image_fname(fn, format='beesbook')[1].timestamp() for fn in fnames]
+
+
+def get_timestamps(path_video, ts_format, path_filelists):
+    if ts_format == '2016':
+        assert path_filelists is None
+        txt_path = path_video.replace('mkv', 'txt')
+        fnames = open(txt_path, 'r').readlines()
+        return [parse_image_fname(fn, format='iso')[1].timestamp() for fn in fnames]
+    elif ts_format in ('2014', '2015'):
+        assert path_filelists is not None
+        return get_seperate_timestamps(path_video, ts_format, path_filelists)
+    else:
+        assert False, 'Unknown timestamp format'
