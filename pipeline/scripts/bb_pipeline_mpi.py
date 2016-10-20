@@ -42,7 +42,8 @@ def process_video(video_path, repo_output_path, ts_format, text_root_path, rank)
     ffmpeg_stderr_fd = open('process_{}_ffmpeg_stderr.log'.format(rank), 'w')
 
     info('Processing video frames from {}'.format(video_path))
-    gen_processor(video_generator(video_path, text_root_path, log_callback, ffmpeg_stderr_fd))
+    gen_processor(video_generator(video_path, ts_format, text_root_path,
+                                  log_callback, ffmpeg_stderr_fd))
 
 
 def parse_args(comm):
