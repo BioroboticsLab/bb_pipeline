@@ -12,8 +12,8 @@ setup(
     description='',
     entry_points={
         'console_scripts': [
-            'bb_pipeline = pipeline.scripts.bb_pipeline_api:main',
-            'bb_pipeline_api = pipeline.scripts.bb_pipeline:main',
+            'bb_pipeline = pipeline.scripts.bb_pipeline:main',
+            'bb_pipeline_api = pipeline.scripts.bb_pipeline_api:main',
             'bb_pipeline_batch = pipeline.scripts.bb_pipeline_batch:main',
             'bb_pipeline_mpi = pipeline.scripts.bb_pipeline_mpi:main',
         ]
