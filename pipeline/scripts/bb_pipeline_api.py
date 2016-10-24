@@ -52,9 +52,9 @@ def api_message():
         return "415 Unsupported Media Type"
 
 
-def main():
+def main():  # pragma: no cover
     app.run(host='0.0.0.0', port=10000)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     main()

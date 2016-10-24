@@ -46,7 +46,7 @@ def process_video(video_path, repo_output_path, ts_format, text_root_path, rank)
                                   log_callback, ffmpeg_stderr_fd))
 
 
-def parse_args(comm):
+def parse_args(comm):  # pragma: no cover
     from pipeline.cmdline import get_shared_positional_arguments, get_shared_optional_arguments
 
     parser = argparse.ArgumentParser(
@@ -80,11 +80,11 @@ def parse_args(comm):
     return parsed_args
 
 
-def delete_folder(path):
+def delete_folder(path):  # pragma: no cover
     shutil.rmtree(path)
 
 
-def main():
+def main():  # pragma: no cover
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
 
@@ -118,5 +118,5 @@ def main():
     info('Exiting.')
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     main()
