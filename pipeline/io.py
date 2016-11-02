@@ -150,6 +150,7 @@ class BBBinaryRepoSink(Sink):
         frames = fc.init('frames', len(self.frames))
         for i, (data_source_idx, detection, timestamp) in enumerate(self.frames):
             frame = frames[i]
+            frame.id = unique_id()
             frame.dataSourceIdx = data_source_idx
             frame.frameIdx = int(i)
             frame.timestamp = timestamp
