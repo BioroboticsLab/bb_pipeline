@@ -13,6 +13,9 @@ from bb_binary import Repository, parse_video_fname
 
 def process_video(args):
     config = get_auto_config()
+    
+    config['TagSimilarityEncoder']['model_path'] = args.encoder_model
+    logger.info('Use encoder model in path {}'.format(args.encoder_model))
 
     logger.info('Initializing {} pipeline(s)'.format(args.num_threads))
     plines = [Pipeline([Image, Timestamp], [PipelineResult], **config)
