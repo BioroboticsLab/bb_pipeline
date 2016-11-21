@@ -92,9 +92,10 @@ class Localizer(PipelineStage):
             if roi_orig.shape == roi_shape:
                 rois.append(roi_orig)
                 mask[idx] = 1
-        if not rois:
-            raise Exception("No rois found")
-        rois = np.stack(rois, axis=0)[:, np.newaxis]
+        if len(rois) > 0:
+            rois = np.stack(rois, axis=0)[:, np.newaxis]
+        else:
+            rois = np.empty(shape=(0, 0, 0, 0))
         return rois, mask
 
     def get_positions(self, saliency, dist):
@@ -172,16 +173,19 @@ class Decoder(PipelineStage):
         return structed_array
 
     def call(self, regions, positions):
-        predictions_norm = self.predict(regions)
-        predictions = self.distribution.denormalize(predictions_norm)
-        ids = predictions['bits']
-        z_rot = predictions['z_rotation']
-        y_rot = predictions['y_rotation']
-        x_rot = predictions['x_rotation']
-        orientations = np.hstack((z_rot, y_rot, x_rot))
-        positions = positions + predictions['center']
-        radii = predictions['radius']
-        return [positions, orientations, ids, radii, predictions]
+        if len(regions) > 0:
+            predictions_norm = self.predict(regions)
+            predictions = self.distribution.denormalize(predictions_norm)
+            ids = predictions['bits']
+            z_rot = predictions['z_rotation']
+            y_rot = predictions['y_rotation']
+            x_rot = predictions['x_rotation']
+            orientations = np.hstack((z_rot, y_rot, x_rot))
+            positions = positions + predictions['center']
+            radii = predictions['radius']
+            return [positions, orientations, ids, radii, predictions]
+        else:
+            return [np.empty(shape=(0, )) for _ in range(len(self.provides))]
 
 
 class CoordinateMapper(PipelineStage):
@@ -237,18 +241,21 @@ class TagSimilarityEncoder(PipelineStage):
         return ints
 
     def call(self, regions):
-        # crop images to match input shape of model
-        _, _, lx, ly = regions.shape
-        _, _, mx, my = self.model.input_shape
-        slice_x = slice(lx//2 - mx//2, lx//2 + mx//2)
-        slice_y = slice(ly//2 - my//2, ly//2 + my//2)
-        regions = regions[:, :, slice_x, slice_y]
-        predictions = self.model.predict(regions)
-        # thresholding predictions
-        #predictions = np.sign(predictions)
-        #predictions = np.where(predictions == 0, -1, predictions)
-        #predictions = (predictions + 1) * 0.5
+        if len(regions) > 0:
+	    # crop images to match input shape of model
+	    _, _, lx, ly = regions.shape
+	    _, _, mx, my = self.model.input_shape
+	    slice_x = slice(lx//2 - mx//2, lx//2 + mx//2)
+	    slice_y = slice(ly//2 - my//2, ly//2 + my//2)
+	    regions = regions[:, :, slice_x, slice_y]
+	    predictions = self.model.predict(regions)
+	    # thresholding predictions
+	    #predictions = np.sign(predictions)
+	    #predictions = np.where(predictions == 0, -1, predictions)
+	    #predictions = (predictions + 1) * 0.5
 
-        #predictions = np.array([self.bit_array_to_ints(pred)
-        #                        for pred in predictions])
-        return [predictions.reshape((len(regions),128))]
+	    #predictions = np.array([self.bit_array_to_ints(pred)
+	    #                        for pred in predictions])
+	    return [predictions.reshape((len(regions),128))]
+        else:
+            return [np.empty(shape=(0, ))]

@@ -1,3 +1,4 @@
+from datetime import timedelta
 import hashlib
 from itertools import chain
 import uuid
@@ -86,9 +87,10 @@ def raw_frames_generator(path_video, format='guess_on_ext', stderr_fd=None):
     return VideoReader(path_video, stderr_fd)
 
 
-def video_generator(path_video, path_filelists, log_callback=None, stderr_fd=None):
+def video_generator(path_video, ts_format='2016', path_filelists=None,
+                    log_callback=None, stderr_fd=sp.DEVNULL):
+    timestamps = get_timestamps(path_video, ts_format, path_filelists)
     fname_video = os.path.basename(path_video)
-    timestamps = get_timestamps(fname_video, path_filelists)
     data_source = DataSource.new_message(filename=fname_video)
     for i, frame in enumerate(VideoReader(path_video, stderr_fd)):
         if log_callback is not None:
@@ -148,6 +150,7 @@ class BBBinaryRepoSink(Sink):
         frames = fc.init('frames', len(self.frames))
         for i, (data_source_idx, detection, timestamp) in enumerate(self.frames):
             frame = frames[i]
+            frame.id = unique_id()
             frame.dataSourceIdx = data_source_idx
             frame.frameIdx = int(i)
             frame.timestamp = timestamp
@@ -177,18 +180,7 @@ class BBBinaryRepoSink(Sink):
         self.repo.add(self._get_container())
 
 
-class LockedBBBinaryRepoSink(BBBinaryRepoSink):
-    def __init__(self, repo, camId, mutex):
-        self.mutex = mutex
-        super().__init__(repo, camId)
-
-    def finish(self):
-        container = self._get_container()
-        with self.mutex:
-            self.repo.add(container)
-
-
-def get_timestamps(fname_video, path_filelists, ts_format='2015'):
+def get_seperate_timestamps(path_video, ts_format, path_filelists):
     def get_flist_name(dt_utc):
         fmt = '%Y%m%d'
         dt = dt_utc.astimezone(get_timezone())
@@ -203,11 +195,20 @@ def get_timestamps(fname_video, path_filelists, ts_format='2015'):
         for root, dirs, files in os.walk(path):
             if name in [os.path.join(os.path.basename(root), f) for f in files]:
                 return os.path.join(path, name)
-        assert False, 'File {} not found in: {}'.format(name, path)
+        return None
 
+    def next_day(dt):
+        return dt + timedelta(days=1)
+
+    fname_video = os.path.basename(path_video)
     cam, from_dt, to_dt = parse_video_fname(fname_video)
-    txt_files = set([get_flist_name(from_dt), get_flist_name(to_dt)])
+    # due to a bug in the data aquistion software we have to check in the
+    # filename list of the next day as well
+    timestamps = [from_dt, to_dt, next_day(from_dt), next_day(to_dt)]
+    txt_files = set([get_flist_name(dt) for dt in timestamps])
     txt_paths = [find_file(f, path_filelists) for f in txt_files]
+    txt_paths = [path for path in txt_paths if path is not None]
+    assert len(txt_paths) > 0
 
     image_fnames = list(chain.from_iterable([open(path, 'r').readlines() for path in txt_paths]))
     first_fname = fname_video.split('_TO_')[0] + '.jpeg\n'
@@ -216,3 +217,19 @@ def get_timestamps(fname_video, path_filelists, ts_format='2015'):
 
     fnames = image_fnames[image_fnames.index(first_fname):image_fnames.index(second_fname) + 1]
     return [parse_image_fname(fn, format='beesbook')[1].timestamp() for fn in fnames]
+
+
+def get_timestamps(path_video, ts_format, path_filelists):
+    # In season 2014 and 2015, the timestamps for each video were stored in a seperate location
+    # from the videos themselves. From 2016 onwards a text file with the timestamps of all frames
+    # is stored next to the videos with the same filename (apart from the extension).
+    if ts_format == '2016':
+        assert path_filelists is None
+        txt_path = path_video.replace('mkv', 'txt')
+        fnames = open(txt_path, 'r').readlines()
+        return [parse_image_fname(fn, format='iso')[1].timestamp() for fn in fnames]
+    elif ts_format in ('2014', '2015'):
+        assert path_filelists is not None
+        return get_seperate_timestamps(path_video, ts_format, path_filelists)
+    else:
+        assert False, 'Unknown timestamp format'

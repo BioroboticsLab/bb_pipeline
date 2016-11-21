@@ -35,6 +35,12 @@ def filelists_path():
 
 
 @pytest.fixture
+def bees_video_2016():
+    return get_test_fname(
+        'data/Cam_0_2016-07-19T18:21:33.097618Z--2016-07-19T18:21:34.092604Z.mkv')
+
+
+@pytest.fixture
 def pipeline_config():
     return get_auto_config()
 

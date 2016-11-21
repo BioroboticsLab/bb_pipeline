@@ -29,10 +29,10 @@ def process_video(args):
     gen_processor = GeneratorProcessor(plines, lambda: BBBinaryRepoSink(repo, camId=camId))
 
     logger.info('Processing video frames from {}'.format(args.video_path))
-    gen_processor(video_generator(args.video_path, args.text_root_path))
+    gen_processor(video_generator(args.video_path, args.timestamp_format, args.text_root_path))
 
 
-def main():
+def main():  # pragma: no cover
     parser = argparse.ArgumentParser(
         prog='BeesBook pipeline',
         description='Process a video using the beesbook pipeline')
@@ -49,5 +49,5 @@ def main():
     process_video(args)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     main()

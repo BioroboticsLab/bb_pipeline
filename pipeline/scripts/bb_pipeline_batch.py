@@ -9,7 +9,7 @@ from subprocess import call
 from pipeline.cmdline import logger, get_shared_positional_arguments, get_shared_optional_arguments
 
 
-def main():
+def main():  # pragma: no cover
     parser = argparse.ArgumentParser(
         prog='BeesBook pipeline batch processor',
         description='Batch process video using the beesbook pipeline')
