@@ -12,11 +12,12 @@ from diktya.func_api_helpers import load_model, predict_wrapper, get_hdf5_attr
 from diktya.distributions import DistributionCollection
 from diktya.preprocessing.image import CropTransformation
 from pipeline.stages.stage import PipelineStage
-from pipeline.objects import Filename, Image, Timestamp, \
+from pipeline.objects import CameraParameter, Filename, Image, Timestamp, \
     CameraIndex, Positions, HivePositions, Orientations, IDs, Saliencies, \
     PipelineResult, LocalizerPositions, Regions, Descriptors, LocalizerInputImage, \
     SaliencyImage, PaddedImage, PaddedLocalizerPositions, LocalizerShapes, Radii, \
     DecoderPredictions
+import fb_stitcher.core
 
 
 class ImageReader(PipelineStage):
@@ -189,11 +190,26 @@ class Decoder(PipelineStage):
 
 
 class CoordinateMapper(PipelineStage):
-    requires = [Positions]
+    requires = [Positions, CameraParameter, CameraIndex]
     provides = [HivePositions]
 
-    def call(self, pos):
-        # TODO: map coordinates
+    def swap_coo(self, pos):
+        swapped_pos = np.copy(pos)
+
+        #postions = pos_yx[:, [1, 0]]
+        swapped_pos[:, [0, 1]] = swapped_pos[:, [1, 0]]  # swapping a, b -> b, a
+        return swapped_pos
+
+    def call(self, pos, cam_param, camIdx):
+
+        pos = self.swap_coo(pos)  # swapping back y, x -> x, y
+        pos = np.array([pos])  # points structure like cv2
+
+        stitcher = fb_stitcher.core.BB_FeatureBasedStitcher()
+        stitcher.load_data(cam_param)
+        pos = stitcher.map_cam_coordinates(camIdx, pos)
+        pos = pos[0]
+        pos = self.swap_coo(pos) # swapping back x, y -> y, x
         return pos
 
 

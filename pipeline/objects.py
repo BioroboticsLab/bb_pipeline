@@ -70,6 +70,8 @@ class NumpyArrayDescription(PipelineObjectDescription):
 class CameraIndex(PipelineObjectDescription):
     type = int
 
+class CameraParameter(FilenameDescription):
+    pass
 
 class Filename(FilenameDescription):
     pass
