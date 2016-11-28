@@ -240,22 +240,17 @@ class TagSimilarityEncoder(PipelineStage):
             ints.append(TagSimilarityEncoder.bit_array_to_int(a[start_idx:start_idx+int_len]))
         return ints
 
+    def preprocess(self, regions):
+        # crop images to match input shape of model
+        crop = CropTransformation(translation=0, crop_shape=(64, 64))
+        rois = crop(regions)
+        rois = np.array([equalize_hist(roi) for roi in rois])
+        return rois
+
     def call(self, regions):
         if len(regions) > 0:
-	    # crop images to match input shape of model
-	    _, _, lx, ly = regions.shape
-	    _, _, mx, my = self.model.input_shape
-	    slice_x = slice(lx//2 - mx//2, lx//2 + mx//2)
-	    slice_y = slice(ly//2 - my//2, ly//2 + my//2)
-	    regions = regions[:, :, slice_x, slice_y]
-	    predictions = self.model.predict(regions)
-	    # thresholding predictions
-	    #predictions = np.sign(predictions)
-	    #predictions = np.where(predictions == 0, -1, predictions)
-	    #predictions = (predictions + 1) * 0.5
-
-	    #predictions = np.array([self.bit_array_to_ints(pred)
-	    #                        for pred in predictions])
-	    return [predictions.reshape((len(regions),128))]
+    	    rois = self.preprocess(regions)
+    	    predictions = self.model.predict(rois)
+    	    return [predictions.reshape((len(rois),128))]
         else:
             return [np.empty(shape=(0, ))]
