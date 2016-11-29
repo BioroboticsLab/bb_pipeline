@@ -249,8 +249,14 @@ class TagSimilarityEncoder(PipelineStage):
 
     def call(self, regions):
         if len(regions) > 0:
-    	    rois = self.preprocess(regions)
-    	    predictions = self.model.predict(rois)
-    	    return [predictions.reshape((len(rois),128))]
+            rois = self.preprocess(regions)
+            predictions = self.model.predict(rois)
+            # thresholding predictions
+            predictions = np.sign(predictions)
+            predictions = np.where(predictions == 0, -1, predictions)
+            predictions = (predictions + 1) * 0.5
+            rpredictions = np.array([self.bit_array_to_ints(pred)
+                                    for pred in predictions])
+            return [predictions]
         else:
             return [np.empty(shape=(0, ))]
