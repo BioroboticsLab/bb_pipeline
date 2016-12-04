@@ -7,15 +7,16 @@ from pipeline import Pipeline
 from pipeline.cmdline import logger, get_shared_positional_arguments, get_shared_optional_arguments
 from pipeline.pipeline import GeneratorProcessor, get_auto_config
 from pipeline.io import BBBinaryRepoSink, video_generator
-from pipeline.objects import PipelineResult, Image, Timestamp
+from pipeline.objects import PipelineResult, CameraParameter, Image, Timestamp, CameraIndex
 from bb_binary import Repository, parse_video_fname
+
 
 
 def process_video(args):
     config = get_auto_config()
 
     logger.info('Initializing {} pipeline(s)'.format(args.num_threads))
-    plines = [Pipeline([Image, Timestamp], [PipelineResult], **config)
+    plines = [Pipeline([CameraIndex, CameraParameter, Image, Timestamp], [PipelineResult], **config)
               for _ in range(args.num_threads)]
 
     logger.info('Loading bb_binary repository {}'.format(args.repo_output_path))

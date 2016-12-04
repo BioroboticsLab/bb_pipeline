@@ -19,6 +19,8 @@ logger = setup_logging()
 
 def get_shared_positional_arguments():
     arguments = list()
+    arguments.append(('camera_params_path', {'help': 'path of the camera parameters file',
+                                           'type': str}))
     arguments.append(('timestamp_format', {'help': 'format of timestamps (e.g. 2015)',
                                            'type': str}))
     arguments.append(('repo_output_path', {'help': 'root path for bb_binary output repository',

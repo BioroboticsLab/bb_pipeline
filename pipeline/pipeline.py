@@ -38,7 +38,7 @@ class GeneratorProcessor(object):
     def _joblib_generator(pipelines, generator):
         for idx, (data_source, img, ts) in enumerate(generator):
             pipeline = pipelines[idx % len(pipelines)]
-            yield pipeline, data_source, img, ts
+            yield pipeline, data_source, img, ts #TODO cameraparamter
 
 
 class Pipeline(object):

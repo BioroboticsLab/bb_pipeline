@@ -96,7 +96,7 @@ def video_generator(path_video, ts_format='2016', path_filelists=None,
         if log_callback is not None:
             log_callback(i)
         img = frame
-        yield data_source, img, timestamps[i]
+        yield data_source, img, timestamps[i] #TODO Cameraparamter
 
 
 class Sink:
