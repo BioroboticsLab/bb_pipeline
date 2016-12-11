@@ -12,8 +12,8 @@ import copy
 from pipeline.io import video_generator, BBBinaryRepoSink  # noqa
 
 
-def _processSingleInput(pipeline, data_source, img, ts):
-    return data_source, pipeline([img, ts]), ts
+def _processSingleInput(pipeline, data_source, path_camera_params, img, ts):
+    return data_source, pipeline([2, path_camera_params, img, ts]), ts
 
 
 class GeneratorProcessor(object):
@@ -36,9 +36,9 @@ class GeneratorProcessor(object):
 
     @staticmethod
     def _joblib_generator(pipelines, generator):
-        for idx, (data_source, img, ts) in enumerate(generator):
+        for idx, (data_source, path_camera_params,img, ts) in enumerate(generator):
             pipeline = pipelines[idx % len(pipelines)]
-            yield pipeline, data_source, img, ts #TODO cameraparamter
+            yield pipeline, data_source, path_camera_params, img, ts #TODO cameraparamter
 
 
 class Pipeline(object):

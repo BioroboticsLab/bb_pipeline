@@ -87,7 +87,7 @@ def raw_frames_generator(path_video, format='guess_on_ext', stderr_fd=None):
     return VideoReader(path_video, stderr_fd)
 
 
-def video_generator(path_video, ts_format='2016', path_filelists=None,
+def video_generator(path_video, path_camera_params, ts_format='2016', path_filelists=None,
                     log_callback=None, stderr_fd=sp.DEVNULL):
     timestamps = get_timestamps(path_video, ts_format, path_filelists)
     fname_video = os.path.basename(path_video)
@@ -96,7 +96,7 @@ def video_generator(path_video, ts_format='2016', path_filelists=None,
         if log_callback is not None:
             log_callback(i)
         img = frame
-        yield data_source, img, timestamps[i] #TODO Cameraparamter
+        yield data_source, path_camera_params, img, timestamps[i] #TODO Cameraparamter
 
 
 class Sink:
