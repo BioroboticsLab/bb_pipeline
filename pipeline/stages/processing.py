@@ -255,7 +255,7 @@ class TagSimilarityEncoder(PipelineStage):
             predictions = np.sign(predictions)
             predictions = np.where(predictions == 0, -1, predictions)
             predictions = (predictions + 1) * 0.5
-            rpredictions = np.array([self.bit_array_to_ints(pred)
+            predictions = np.array([self.bit_array_to_ints(pred)
                                     for pred in predictions])
             return [predictions]
         else:
