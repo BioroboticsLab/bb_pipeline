@@ -35,4 +35,5 @@ def get_shared_optional_arguments():
     arguments.append(('--num_threads', {'help': 'number of images to process in parallel',
                                         'type': int, 'default': 1}))
     arguments.append(('--encoder_model', {'help': 'path to TagSimilarityEncoder model', 'type': str, 'default': None}))
+    arguments.append(('--nb_frames', {'help': 'only process first n frames', 'type': int, 'default': None}))
     return arguments

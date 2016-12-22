@@ -15,7 +15,8 @@ class VideoReader:
                  ffmpeg_stderr_fd=None,
                  format='guess_on_ext',
                  ffmpeg_bin='ffmpeg',
-                 ffprobe_bin='ffprobe'):
+                 ffprobe_bin='ffprobe',
+                 nb_frames=None):
         if format == 'guess_on_ext':
             format = self.guess_format_on_extension(video_path)
 
@@ -31,6 +32,10 @@ class VideoReader:
         if format is not None:
             vidread_command.insert(1, '-vcodec')
             vidread_command.insert(2, format)
+
+        if nb_frames is not None:
+            vidread_command.insert(3, '-vframes')
+            vidread_command.insert(4, str(nb_frames))
 
         resolution_command = [
             ffprobe_bin,
@@ -75,7 +80,6 @@ class VideoReader:
             raise StopIteration()
 
         self.frames += 1
-
         image = np.fromstring(raw_image, dtype='uint8')
         image = image.reshape((self.h, self.w))
         self.video_pipe.stdout.flush()
@@ -88,11 +92,11 @@ def raw_frames_generator(path_video, format='guess_on_ext', stderr_fd=None):
 
 
 def video_generator(path_video, ts_format='2016', path_filelists=None,
-                    log_callback=None, stderr_fd=sp.DEVNULL):
+                    log_callback=None, stderr_fd=sp.DEVNULL, nb_frames=None):
     timestamps = get_timestamps(path_video, ts_format, path_filelists)
     fname_video = os.path.basename(path_video)
     data_source = DataSource.new_message(filename=fname_video)
-    for i, frame in enumerate(VideoReader(path_video, stderr_fd)):
+    for i, frame in enumerate(VideoReader(path_video, stderr_fd, nb_frames=nb_frames)):
         if log_callback is not None:
             log_callback(i)
         img = frame

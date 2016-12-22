@@ -13,7 +13,7 @@ from bb_binary import Repository, parse_video_fname
 
 def process_video(args):
     config = get_auto_config()
-    
+
     config['TagSimilarityEncoder']['model_path'] = args.encoder_model
     logger.info('Use encoder model in path {}'.format(args.encoder_model))
 
@@ -29,7 +29,7 @@ def process_video(args):
     gen_processor = GeneratorProcessor(plines, lambda: BBBinaryRepoSink(repo, camId=camId))
 
     logger.info('Processing video frames from {}'.format(args.video_path))
-    gen_processor(video_generator(args.video_path, args.timestamp_format, args.text_root_path))
+    gen_processor(video_generator(args.video_path, args.timestamp_format, args.text_root_path, nb_frames=args.nb_frames))
 
 
 def main():  # pragma: no cover
