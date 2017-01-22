@@ -74,9 +74,9 @@ class LocalizerVisualizer(PipelineStage):
 
         image_surface = cairo.ImageSurface(cairo.FORMAT_A8, image.shape[1], image.shape[0])
         ctx = cairo.Context(image_surface)
-        for x, y in coordinates:
+        for y, x in coordinates:
             ctx.save()
-            ctx.translate(int(y), int(x))
+            ctx.translate(int(x), int(y))
             ctx.new_path()
             ctx.arc(0, 0, radius + line_width / 2., 0, 2 * np.pi)
             ctx.close_path()
