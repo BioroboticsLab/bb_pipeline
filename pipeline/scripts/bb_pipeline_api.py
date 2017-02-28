@@ -20,6 +20,7 @@ def init_pipeline():
                         **get_auto_config())
     return pipeline
 
+
 pipeline = init_pipeline()
 pipeline_lock = Lock()
 
