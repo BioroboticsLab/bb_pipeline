@@ -158,10 +158,10 @@ class BBBinaryRepoSink(Sink):
                 'detectionsDP', len(detection.positions))
             for j, db in enumerate(detections_builder):
                 db.idx = j
-                db.xpos = int(detection.positions[j, 0])
-                db.ypos = int(detection.positions[j, 1])
-                db.xposHive = int(detection.hive_positions[j, 0])
-                db.yposHive = int(detection.hive_positions[j, 1])
+                db.xpos = int(detection.positions[j, 1])
+                db.ypos = int(detection.positions[j, 0])
+                db.xposHive = int(detection.hive_positions[j, 1])
+                db.yposHive = int(detection.hive_positions[j, 0])
                 db.zRotation = float(detection.orientations[j, 0])
                 db.yRotation = float(detection.orientations[j, 1])
                 db.xRotation = float(detection.orientations[j, 2])
