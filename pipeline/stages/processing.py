@@ -245,12 +245,13 @@ class TagSimilarityEncoder(PipelineStage):
         crop = CropTransformation(translation=0, crop_shape=(64, 64))
         rois = crop(regions)
         rois = np.array([equalize_hist(roi) for roi in rois])
+        rois = np.clip((rois * 2) - 1, -1, 1)
         return rois
 
     def call(self, regions):
         if len(regions) > 0:
             rois = self.preprocess(regions)
-            predictions = self.model.predict(rois)
+            predictions = self.model.predict(rois).reshape((len(rois), 128))
             # thresholding predictions
             predictions = np.sign(predictions)
             predictions = np.where(predictions == 0, -1, predictions)
