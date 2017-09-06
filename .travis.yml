@@ -41,7 +41,7 @@ install:
 - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy matplotlib
   h5py pillow scikit-image pandas scikit-learn pytz joblib sphinx
 - source activate test-environment
-- conda install -q -c https://conda.binstar.org/menpo opencv3
+- conda install -q --channel menpo opencv3
 - pip install cairocffi
 - pip install theano
 - pip install keras==1.0.6
