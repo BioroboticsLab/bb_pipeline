@@ -123,16 +123,19 @@ class ResultCrownVisualizer(PipelineStage):
 
     def call(self, image, positions, orientations, ids):
         import cairocffi as cairo
-        z_rots = orientations[:, 0]
-        positions = np.stack([positions[:, 1], positions[:, 0]], axis=-1)
+        has_detections = len(orientations) > 0
+        if has_detections:
+            z_rots = orientations[:, 0]
+            positions = np.stack([positions[:, 1], positions[:, 0]], axis=-1)
         height, width = image.shape
         # hsva
         # avsh
         image_surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
         ctx = cairo.Context(image_surface)
         ctx.set_antialias(cairo.ANTIALIAS_NONE)
-        for z, pos, id in zip(z_rots, positions, ids):
-            self._draw_crown(ctx, z, pos, id)
+        if has_detections:
+            for z, pos, id in zip(z_rots, positions, ids):
+                self._draw_crown(ctx, z, pos, id)
         image_surface.flush()
         overlay = np.ndarray(shape=(height, width, 4),
                              buffer=image_surface.get_data(),
