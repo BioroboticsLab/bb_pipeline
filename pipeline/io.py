@@ -84,7 +84,7 @@ class VideoReader:
 
 def raw_frames_generator(path_video, format='guess_on_ext', stderr_fd=None):
     "yields the frames of the video."
-    return VideoReader(path_video, stderr_fd)
+    return VideoReader(path_video, stderr_fd, format=format)
 
 
 def video_generator(path_video, ts_format='2016', path_filelists=None,
