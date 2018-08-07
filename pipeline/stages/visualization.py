@@ -1,6 +1,8 @@
 import cv2
 import numpy as np
+import skimage
 from skimage.color import hsv2rgb, rgb2hsv, gray2rgb
+from skimage.draw import circle
 from skimage.transform import resize
 from skimage.exposure import adjust_gamma
 import matplotlib
@@ -62,8 +64,6 @@ class LocalizerVisualizer(PipelineStage):
     @staticmethod
     def get_circle_overlay(coordinates, image, radius=32, line_width=8,
                            color=(1., 0, 0)):
-        import cairocffi as cairo
-
         height, width = image.shape[:2]
         if image.ndim == 2:
             overlay = np.stack([image, image, image], axis=-1)
@@ -72,27 +72,15 @@ class LocalizerVisualizer(PipelineStage):
         else:
             raise Exception("Did not understand image shape {}.".format(image.shape))
 
-        image_surface = cairo.ImageSurface(cairo.FORMAT_A8, image.shape[1], image.shape[0])
-        ctx = cairo.Context(image_surface)
-        for y, x in coordinates:
-            ctx.save()
-            ctx.translate(int(x), int(y))
-            ctx.new_path()
-            ctx.arc(0, 0, radius + line_width / 2., 0, 2 * np.pi)
-            ctx.close_path()
-            ctx.set_source_rgba(0, 0, 0, 1)
-            ctx.set_line_width(line_width)
-            ctx.stroke()
-            ctx.restore()
+        circles = np.zeros(shape=(height, width), dtype=np.bool)
+        for x, y in coordinates:
+            rr, cc = circle(int(x), int(y), radius + line_width // 2)
+            circles[rr, cc] = True
+            rr, cc = circle(int(x), int(y), radius - line_width // 2)
+            circles[rr, cc] = False
 
-        image_surface.flush()
-        circles = np.ndarray(shape=(height, width),
-                             buffer=image_surface.get_data(),
-                             dtype=np.uint8)
-        circles_mask = (circles == 255)
         for i in range(3):
-            overlay[circles_mask, i] = color[i]
-        image_surface.finish()
+            overlay[circles, i] = color[i]
 
         return overlay
 
