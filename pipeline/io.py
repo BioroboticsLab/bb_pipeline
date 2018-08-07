@@ -67,6 +67,9 @@ class VideoReader:
     def __next__(self):
         return self.next()
 
+    def __del__(self):
+        self.video_pipe.kill()
+
     def next(self):
         raw_image = self.video_pipe.stdout.read(self.h * self.w * 1)
 
