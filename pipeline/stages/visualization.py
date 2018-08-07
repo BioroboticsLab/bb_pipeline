@@ -1,6 +1,5 @@
 import cv2
 import numpy as np
-import skimage
 from skimage.color import hsv2rgb, rgb2hsv, gray2rgb
 from skimage.draw import circle
 from skimage.transform import resize
