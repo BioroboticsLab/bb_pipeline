@@ -67,7 +67,7 @@ class Localizer(PipelineStage):
     def __init__(self,
                  model_path,
                  threshold=0.6):
-        self.saliency_threshold = threshold
+        self.saliency_threshold = float(threshold)
         self.model = load_model(model_path)
         self.model._make_predict_function()
 
