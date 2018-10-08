@@ -116,7 +116,7 @@ class Localizer(PipelineStage):
         zoom_shape = [downscale_factor, downscale_factor]
         scale_factor = roi_size / downsampled_size
 
-        image_downsampled = zoom(image, zoom_shape).astype(np.float32) / 255.
+        image_downsampled = zoom(image, zoom_shape, order=1).astype(np.float32) / 255.
 
         saliency = self.model.predict(image_downsampled[np.newaxis, np.newaxis, :, :])[0, 0]
         saliency = gaussian_filter(saliency, sigma=3/4)
