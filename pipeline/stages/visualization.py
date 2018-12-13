@@ -8,12 +8,12 @@ import matplotlib
 
 from pipeline.stages.stage import PipelineStage
 from pipeline.objects import Image, Orientations, IDs, SaliencyOverlay, \
-    LocalizerPositions, LocalizerPositionsOverlay, FinalResultOverlay, SaliencyImage, \
-    CrownOverlay, LocalizerShapes
+    TagLocalizerPositions, LocalizerPositionsOverlay, FinalResultOverlay, \
+    TagSaliencyImage, CrownOverlay, LocalizerShapes
 
 
 class SaliencyVisualizer(PipelineStage):
-    requires = [Image, SaliencyImage]
+    requires = [Image, TagSaliencyImage]
     provides = [SaliencyOverlay]
 
     def __init__(self, hue=240 / 360., gamma=0.2):
@@ -23,20 +23,18 @@ class SaliencyVisualizer(PipelineStage):
     def call(self, image, saliency_image):
         img_resize = resize(image, saliency_image.shape)
         saliency_range = max(0.15, saliency_image.max() - saliency_image.min())
-        saliency_norm = (saliency_image - saliency_image.min()) / saliency_range
+        saliency_norm = (
+            saliency_image - saliency_image.min()) / saliency_range
         saliency_gamma = adjust_gamma(saliency_norm, gamma=self.gamma)
         cmap = matplotlib.cm.get_cmap('viridis')
         cmap_hsv = rgb2hsv(cmap(saliency_gamma)[:, :, :3])
-        hsv = np.stack([
-            cmap_hsv[:, :, 0],
-            saliency_gamma,
-            img_resize
-        ], axis=-1)
+        hsv = np.stack([cmap_hsv[:, :, 0], saliency_gamma, img_resize],
+                       axis=-1)
         return hsv2rgb(hsv)
 
 
 class LocalizerVisualizer(PipelineStage):
-    requires = [Image, LocalizerPositions, LocalizerShapes]
+    requires = [Image, TagLocalizerPositions, LocalizerShapes]
     provides = [LocalizerPositionsOverlay]
 
     def __init__(self, roi_overlay='circle'):
@@ -46,8 +44,9 @@ class LocalizerVisualizer(PipelineStage):
     @staticmethod
     def get_roi_overlay(coordinates, image, roi_size):
         def roi_slice(coord):
-            return slice(int(np.ceil(coord - roi_size / 2)),
-                         int(np.ceil(coord + roi_size / 2)))
+            return slice(
+                int(np.ceil(coord - roi_size / 2)),
+                int(np.ceil(coord + roi_size / 2)))
 
         pltim = np.zeros((image.shape[0], image.shape[1], 3))
         pltim[:, :, 0] = image
@@ -61,7 +60,10 @@ class LocalizerVisualizer(PipelineStage):
         return pltim
 
     @staticmethod
-    def get_circle_overlay(coordinates, image, radius=32, line_width=8,
+    def get_circle_overlay(coordinates,
+                           image,
+                           radius=32,
+                           line_width=8,
                            color=(1., 0, 0)):
         height, width = image.shape[:2]
         if image.ndim == 2:
@@ -69,7 +71,8 @@ class LocalizerVisualizer(PipelineStage):
         elif image.ndim == 3 and image.shape[-1] == 3:
             overlay = image.copy()
         else:
-            raise Exception("Did not understand image shape {}.".format(image.shape))
+            raise Exception("Did not understand image shape {}.".format(
+                image.shape))
 
         circles = np.zeros(shape=(height, width), dtype=np.bool)
         for x, y in coordinates:
@@ -93,13 +96,17 @@ class LocalizerVisualizer(PipelineStage):
 
 
 class ResultCrownVisualizer(PipelineStage):
-    requires = [Image, LocalizerPositions, Orientations, IDs]
+    requires = [Image, TagLocalizerPositions, Orientations, IDs]
     provides = [CrownOverlay]
 
-    def __init__(self, outer_radius=60, inner_radius=32,
-                 orientation_radius=72,
-                 true_hue=120 / 360., false_hue=240 / 360., orientation_hue=0 / 360.,
-                 line_width=3):
+    def __init__(self,
+                 outer_radius=60 // 1.5,
+                 inner_radius=32 // 1.5,
+                 orientation_radius=72 // 1.5,
+                 true_hue=120 / 360.,
+                 false_hue=240 / 360.,
+                 orientation_hue=0 / 360.,
+                 line_width=2):
         self.outer_radius = outer_radius
         self.inner_radius = inner_radius
         self.orientation_radius = orientation_radius
@@ -124,9 +131,10 @@ class ResultCrownVisualizer(PipelineStage):
             for z, pos, id in zip(z_rots, positions, ids):
                 self._draw_crown(ctx, z, pos, id)
         image_surface.flush()
-        overlay = np.ndarray(shape=(height, width, 4),
-                             buffer=image_surface.get_data(),
-                             dtype=np.uint8)
+        overlay = np.ndarray(
+            shape=(height, width, 4),
+            buffer=image_surface.get_data(),
+            dtype=np.uint8)
         overlay_hsva = overlay / 255.
         image_surface.finish()
         return overlay_hsva
@@ -146,9 +154,9 @@ class ResultCrownVisualizer(PipelineStage):
         def arc_path(start, end, inner, outer):
             ctx.new_path()
             ctx.arc(0, 0, inner, start, end)
-            ctx.line_to(outer*x(end), outer*y(end))
+            ctx.line_to(outer * x(end), outer * y(end))
             ctx.arc_negative(0, 0, outer, end, start)
-            ctx.line_to(inner*x(start), inner*y(start))
+            ctx.line_to(inner * x(start), inner * y(start))
             ctx.close_path()
 
         def fill_arc(start, end, color, inner, outer):
@@ -166,7 +174,7 @@ class ResultCrownVisualizer(PipelineStage):
             ctx.stroke()
 
         def confidence_to_alpha(c):
-            return 2*(c - 0.5)
+            return 2 * (c - 0.5)
 
         ctx.save()
         ctx.translate(pos[0], pos[1])
@@ -174,17 +182,21 @@ class ResultCrownVisualizer(PipelineStage):
         w = 1 / len(bits) * 2 * np.pi
         for i, bit in enumerate(bits):
             if bit > 0.5:
-                color = self._hsv2rgba(self.true_hue, confidence_to_alpha(bit), 1, 1)
+                color = self._hsv2rgba(self.true_hue, confidence_to_alpha(bit),
+                                       1, 1)
             else:
-                color = self._hsv2rgba(self.false_hue, confidence_to_alpha(1 - bit), 1, 1)
-            fill_arc(w*i, w*(i+1), color, self.inner_radius, self.outer_radius)
+                color = self._hsv2rgba(self.false_hue,
+                                       confidence_to_alpha(1 - bit), 1, 1)
+            fill_arc(w * i, w * (i + 1), color, self.inner_radius,
+                     self.outer_radius)
         fill_arc(-np.pi / 2, np.pi / 2,
                  self._hsv2rgba(self.orientation_hue, 1, 1, 1),
                  self.outer_radius, self.orientation_radius)
 
         stroke_color = self._hsv2rgba(0, 0, 0.5, 1)
         for i in range(len(bits)):
-            draw_arc_line(w*i, w*(i+1), stroke_color, self.inner_radius, self.outer_radius)
+            draw_arc_line(w * i, w * (i + 1), stroke_color, self.inner_radius,
+                          self.outer_radius)
         ctx.restore()
 
     @staticmethod
@@ -195,21 +207,26 @@ class ResultCrownVisualizer(PipelineStage):
 
 
 class ResultVisualizer(PipelineStage):
-    requires = [LocalizerPositionsOverlay, LocalizerPositions,
-                Orientations, IDs]
+    requires = [
+        LocalizerPositionsOverlay, TagLocalizerPositions, Orientations, IDs
+    ]
     provides = [FinalResultOverlay]
 
     @staticmethod
-    def draw_arrow(overlay, z_rotation, position,
-                   line_width,
-                   arrow_length,
+    def draw_arrow(overlay, z_rotation, position, line_width, arrow_length,
                    arrow_color):
-        x_to = np.round(position[0] + arrow_length * np.cos(z_rotation)).astype(np.int32)
-        y_to = np.round(position[1] + arrow_length * np.sin(z_rotation)).astype(np.int32)
-        cv2.arrowedLine(overlay, tuple(position), (x_to, y_to),
-                        arrow_color, line_width, cv2.LINE_AA)
+        x_to = np.round(position[0] +
+                        arrow_length * np.cos(z_rotation)).astype(np.int32)
+        y_to = np.round(position[1] +
+                        arrow_length * np.sin(z_rotation)).astype(np.int32)
+        cv2.arrowedLine(overlay, tuple(position), (x_to, y_to), arrow_color,
+                        line_width, cv2.LINE_AA)
 
-    def call(self, overlay, positions, orientations, ids,
+    def call(self,
+             overlay,
+             positions,
+             orientations,
+             ids,
              arrow_length=150,
              line_width=6,
              font_size=1.5,

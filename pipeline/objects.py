@@ -7,15 +7,13 @@ class PipelineObject(object):
 
 
 class PipelineResult(PipelineObject):
-    def __init__(self, positions, hive_positions, orientations,
-                 ids, saliencies, radii, descriptors):
+    def __init__(self, positions, hive_positions, orientations, ids,
+                 saliencies):
         self.positions = positions
         self.hive_positions = hive_positions
         self.orientations = orientations
         self.ids = ids
         self.saliencies = saliencies
-        self.radii = radii
-        self.descriptors = descriptors
 
 
 class PipelineObjectDescription(object):
@@ -56,8 +54,8 @@ class NumpyArrayDescription(PipelineObjectDescription):
         if ndim():
             if ndim() != len(arr.shape):
                 raise Exception(
-                    "ndim missmatch: Expected {}, got shape {} with {}"
-                    .format(ndim(), arr.shape, len(arr.shape)))
+                    "ndim missmatch: Expected {}, got shape {} with {}".format(
+                        ndim(), arr.shape, len(arr.shape)))
         if cls.shape is not None:
             for i, (expected, got) in enumerate(zip(cls.shape, arr.shape)):
                 if expected is not None:
@@ -95,47 +93,46 @@ class LocalizerInputImage(NumpyArrayDescription):
     ndim = 2
 
 
-class Regions(NumpyArrayDescription):
+class BeeRegions(NumpyArrayDescription):
     ''' Image patches for localizer positions (at original image scale) '''
     ndim = 4
 
 
-class SaliencyImage(NumpyArrayDescription):
-    ''' Saliency image (downsampled image coordinates) '''
+class TagRegions(NumpyArrayDescription):
+    ''' Image patches for localizer positions (at original image scale) '''
+    ndim = 4
+
+
+class TagSaliencyImage(NumpyArrayDescription):
+    ''' Tag saliency image (downsampled image coordinates) '''
     ndim = 2
 
 
-class Saliencies(NumpyArrayDescription):
+class TagSaliencies(NumpyArrayDescription):
     pass
 
 
-class LocalizerPositions(NumpyArrayDescription):
+class TagLocalizerPositions(NumpyArrayDescription):
     ''' Center positions of localized tags (original image coordinates) '''
     pass
 
 
-class Radii(NumpyArrayDescription):
-    ''' Radii of localized tags '''
+class BeeSaliencyImage(NumpyArrayDescription):
+    ''' Bee saliency image (downsampled image coordinates) '''
+    ndim = 2
+
+
+class BeeSaliencies(NumpyArrayDescription):
     pass
 
 
-class PaddedLocalizerPositions(NumpyArrayDescription):
-    ''' Center positions of localized tags (padded image coordinates) '''
-    pass
-
-
-class Descriptors(NumpyArrayDescription):
-    ''' Output of Autoencoder for each Candidate '''
+class BeeLocalizerPositions(NumpyArrayDescription):
+    ''' Center positions of localized bees (original image coordinates) '''
     pass
 
 
 class Positions(NumpyArrayDescription):
     ''' Final tag center coordinates (corrected by Decoder) '''
-    pass
-
-
-class HivePositions(NumpyArrayDescription):
-    ''' Final tag center in hive coordinate system '''
     pass
 
 

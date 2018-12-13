@@ -27,8 +27,9 @@ class GeneratorProcessor(object):
     def __call__(self, generator):
         sink = self.sink_factory()
         evaluations = self.parallel(
-            delayed(_processSingleInput)(*args) for args in
-            GeneratorProcessor._joblib_generator(self.pipelines, generator))
+            delayed(_processSingleInput)(*args)
+            for args in GeneratorProcessor._joblib_generator(
+                self.pipelines, generator))
 
         for (data_source, results, ts) in evaluations:
             sink.add_frame(data_source, results, ts)
@@ -42,7 +43,9 @@ class GeneratorProcessor(object):
 
 
 class Pipeline(object):
-    def __init__(self, inputs, outputs,
+    def __init__(self,
+                 inputs,
+                 outputs,
                  available_stages=pipeline.stages.Stages,
                  **config):
         if len(set(inputs)) != len(inputs):
@@ -54,13 +57,17 @@ class Pipeline(object):
         self.outputs = outputs
         self.config_dict = config
         self.available_stages = available_stages
-        self.required_stages = Pipeline.required_stages(self.inputs, self.outputs,
-                                                        self.available_stages)
-        self.stages = [self._instantiate_stage(s) for s in self.required_stages]
+        self.required_stages = Pipeline.required_stages(
+            self.inputs, self.outputs, self.available_stages)
+        self.stages = [
+            self._instantiate_stage(s) for s in self.required_stages
+        ]
         self.pipeline = self._build_pipeline(self.stages)
 
     @staticmethod
-    def required_stages(input_stages, output_stages, available_stages=pipeline.stages.Stages):
+    def required_stages(input_stages,
+                        output_stages,
+                        available_stages=pipeline.stages.Stages):
         added_stages = set()
         requirements = set(output_stages)
         while len(requirements) > 0:
@@ -83,7 +90,8 @@ class Pipeline(object):
                     break
 
             if not req_fulfilled:
-                raise RuntimeError('Unable to fulfill requirement {}'.format(req))
+                raise RuntimeError(
+                    'Unable to fulfill requirement {}'.format(req))
         return added_stages
 
     @staticmethod
@@ -134,24 +142,25 @@ class Pipeline(object):
                 return stage()
         except TypeError:
             if stage.__name__ not in self.config_dict:
-                raise KeyError(
-                    "No config for stage {} set.\n".format(stage.__name__))
+                raise KeyError("No config for stage {} set.\n".format(
+                    stage.__name__))
             stage_config = self.config_dict[stage.__name__]
             sig = inspect.signature(stage)
             missing_configs = []
             for name, param in sig.parameters.items():
                 if name == 'self':
                     continue
-                if (param.default == Parameter.empty and
-                        name not in stage_config):
+                if (param.default == Parameter.empty
+                        and name not in stage_config):
                     missing_configs.append(name)
 
             assert missing_configs
-            missing_strs = [self._get_config_parameter_line(
-                name, sig.parameters[name]) for name in missing_configs]
-            raise KeyError(
-                "In stage {} following config is missing:\n"
-                .format(stage.__name__) + "\n".join(missing_strs))
+            missing_strs = [
+                self._get_config_parameter_line(name, sig.parameters[name])
+                for name in missing_configs
+            ]
+            raise KeyError("In stage {} following config is missing:\n".format(
+                stage.__name__) + "\n".join(missing_strs))
 
     def _build_pipeline(self, stages):
         pipeline = []
@@ -194,7 +203,7 @@ class Pipeline(object):
             if intermediate in self.outputs:
                 outputs[intermediate] = value
 
-        assert(len(outputs) == len(self.outputs))
+        assert (len(outputs) == len(self.outputs))
         return outputs
 
 
@@ -210,7 +219,7 @@ def _get_cache_dir(name):
 
 def download_models(config):
     new_config = copy.copy(config)
-    for stage_name in ('Localizer', 'Decoder', 'TagSimilarityEncoder'):
+    for stage_name in ('Localizer', 'Decoder'):
         if stage_name not in config:
             continue
         stage_config = new_config[stage_name]
