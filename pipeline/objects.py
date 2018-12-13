@@ -7,9 +7,10 @@ class PipelineObject(object):
 
 
 class PipelineResult(PipelineObject):
-    def __init__(self, positions, hive_positions, orientations, ids,
-                 saliencies):
-        self.positions = positions
+    def __init__(self, bee_positions, tag_positions, hive_positions,
+                 orientations, ids, saliencies):
+        self.bee_positions = bee_positions
+        self.tag_positions = tag_positions
         self.hive_positions = hive_positions
         self.orientations = orientations
         self.ids = ids

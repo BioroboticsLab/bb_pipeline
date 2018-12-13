@@ -261,8 +261,11 @@ class Decoder(PipelineStage):
 
 
 class ResultMerger(PipelineStage):
-    requires = [Positions, Orientations, IDs, TagSaliencies]
+    requires = [BeeLocalizerPositions, Positions,
+                Orientations, IDs, TagSaliencies]
     provides = [PipelineResult]
 
-    def call(self, positions, orientations, ids, saliencies):
-        return PipelineResult(positions, orientations, ids, saliencies)
+    def call(self, bee_positions, tag_positions,
+             orientations, ids, saliencies):
+        return PipelineResult(bee_positions, tag_positions,
+                              orientations, ids, saliencies)
