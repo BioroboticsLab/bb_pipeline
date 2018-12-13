@@ -157,11 +157,11 @@ class BBBinaryRepoSink(Sink):
             frame.frameIdx = int(i)
             frame.timestamp = timestamp
             detections_builder = frame.detectionsUnion.init(
-                'detectionsDP', len(detection.positions))
+                'detectionsDP', len(detection.tag_positions))
             for j, db in enumerate(detections_builder):
                 db.idx = j
-                db.xpos = int(detection.positions[j, 1])
-                db.ypos = int(detection.positions[j, 0])
+                db.xpos = int(detection.tag_positions[j, 1])
+                db.ypos = int(detection.tag_positions[j, 0])
                 db.zRotation = float(detection.orientations[j, 0])
                 db.yRotation = float(detection.orientations[j, 1])
                 db.xRotation = float(detection.orientations[j, 2])
@@ -169,6 +169,13 @@ class BBBinaryRepoSink(Sink):
                 decodedId = db.init('decodedId', len(detection.ids[j]))
                 for k, bit in enumerate(detection.ids[j]):
                     decodedId[k] = int(round(255 * bit))
+
+            detections_builder = frame.init(
+                'detectionsBees', len(detection.bee_positions))
+            for j, db in enumerate(detections_builder):
+                db.idx = j
+                db.xpos = int(detection.bee_positions[j, 1])
+                db.ypos = int(detection.bee_positions[j, 0])
 
         return fc
 
