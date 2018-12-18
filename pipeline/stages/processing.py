@@ -108,7 +108,7 @@ class Localizer(PipelineStage):
         BeeLocalizerPositions,
     ]
 
-    def __init__(self, model_path, threshold_tag=0.575, threshold_bee=.7):
+    def __init__(self, model_path, threshold_tag=.7, threshold_bee=0.575):
         self.saliency_threshold_tag = float(threshold_tag)
         self.saliency_threshold_bee = float(threshold_bee)
         self.model = load_model(model_path)
@@ -262,10 +262,13 @@ class Decoder(PipelineStage):
 
 class ResultMerger(PipelineStage):
     requires = [BeeLocalizerPositions, Positions,
-                Orientations, IDs, TagSaliencies]
+                Orientations, IDs, TagSaliencies,
+                BeeSaliencies]
     provides = [PipelineResult]
 
     def call(self, bee_positions, tag_positions,
-             orientations, ids, saliencies):
+             orientations, ids, tag_saliencies,
+             bee_saliencies):
         return PipelineResult(bee_positions, tag_positions,
-                              orientations, ids, saliencies)
+                              orientations, ids, tag_saliencies,
+                              bee_saliencies)
