@@ -36,6 +36,5 @@ RUN git clone https://github.com/Theano/libgpuarray.git && \
     
 RUN pip3 install jupyter 
 RUN jupyter notebook --generate-config
-RUN echo "c.NotebookApp.password='sha1:ef1e7286fa11:e9762b0a579f583b7eebaae0fb4195ed3068e1a7'">>/root/.jupyter/jupyter_notebook_config.py
 
 RUN echo "[global]\ndevice=cuda\nfloatX=float32\noptimizer_including=cudnn\n[nvcc]\nfastmath=True" > /root/.theanorc
