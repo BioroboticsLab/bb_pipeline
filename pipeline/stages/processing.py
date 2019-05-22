@@ -17,12 +17,20 @@ from pipeline.objects import Filename, Image, Timestamp, \
     DecoderPredictions, TagLocalizerPositions, TagSaliencies, \
     TagSaliencyImage, BeeRegions, TagRegions
 
-from keras.backend.tensorflow_backend import set_session
-config = tf.ConfigProto()
-config.gpu_options.allow_growth = True
-session = tf.Session(config=config)
-set_session(session)
 
+
+tensorflow_session = None
+def get_tensorflow_session():
+    global tensorflow_session
+    if tensorflow_session is None:
+        from keras.backend.tensorflow_backend import set_session
+        config = tf.ConfigProto()
+        config.gpu_options.allow_growth = True
+        tensorflow_session = tf.Session(config=config)
+        set_session(tensorflow_session)
+    return tensorflow_session
+
+    
 
 def zoom(image, zoom_factor, gpu=True):
     if not gpu:
@@ -42,15 +50,23 @@ def zoom(image, zoom_factor, gpu=True):
     img = tf.placeholder(tf.float32, shape=input_shape, name='original_image')
     img_zoom = tf.image.resize_bicubic(img, target_shape)
 
-    processed = session.run(
+    processed = get_tensorflow_session().run(
         img_zoom[0, :, :, 0], feed_dict={img: image[None, :, :, None]})
 
     return processed
 
+class InitializedPipelineStage(PipelineStage):
+    def __init__(self):
+        super().__init__()
+        # Make sure global tensorflow session is available.
+        get_tensorflow_session()
 
-class ImageReader(PipelineStage):
+class ImageReader(InitializedPipelineStage):
     requires = [Filename]
     provides = [Image, Timestamp, CameraIndex]
+
+    def __init__(self):
+        super().__init__()
 
     def call(self, fname):
         image = imread(fname)
@@ -58,7 +74,7 @@ class ImageReader(PipelineStage):
         return image, dt.timestamp(), camIdx
 
 
-class LocalizerPreprocessor(PipelineStage):
+class LocalizerPreprocessor(InitializedPipelineStage):
     requires = [Image]
     provides = [PaddedImage, LocalizerInputImage, LocalizerShapes]
 
@@ -69,6 +85,8 @@ class LocalizerPreprocessor(PipelineStage):
                  clahe_clip_limit=2,
                  clahe_tile_width=64,
                  clahe_tile_heigth=64):
+        super().__init__()
+
         if use_clahe:
             self.clahe = cv2.createCLAHE(clahe_clip_limit,
                                          (clahe_tile_width, clahe_tile_heigth))
@@ -95,7 +113,7 @@ class LocalizerPreprocessor(PipelineStage):
         return [self.pad(image), self.pad(localizer_input), shapes]
 
 
-class Localizer(PipelineStage):
+class Localizer(InitializedPipelineStage):
     requires = [LocalizerInputImage, PaddedImage, LocalizerShapes]
     provides = [
         TagRegions,
@@ -109,6 +127,7 @@ class Localizer(PipelineStage):
     ]
 
     def __init__(self, model_path, threshold_tag=.7, threshold_bee=0.575):
+        super().__init__()
         self.saliency_threshold_tag = float(threshold_tag)
         self.saliency_threshold_bee = float(threshold_bee)
         self.model = load_model(model_path)
@@ -203,7 +222,7 @@ class Localizer(PipelineStage):
         return tag_results + bee_results
 
 
-class Decoder(PipelineStage):
+class Decoder(InitializedPipelineStage):
     requires = [TagRegions, TagLocalizerPositions]
     provides = [Positions, Orientations, IDs, DecoderPredictions]
 
@@ -214,6 +233,7 @@ class Decoder(PipelineStage):
                       ('center', np.float32, (2, ))])
 
     def __init__(self, model_path, use_hist_equalization=True):
+        super().__init__()
         self.model = load_model(model_path)
         self.uses_hist_equalization = use_hist_equalization
 
@@ -260,11 +280,14 @@ class Decoder(PipelineStage):
             return [np.empty(shape=(0, )) for _ in range(len(self.provides))]
 
 
-class ResultMerger(PipelineStage):
+class ResultMerger(InitializedPipelineStage):
     requires = [BeeLocalizerPositions, Positions,
                 Orientations, IDs, TagSaliencies,
                 BeeSaliencies]
     provides = [PipelineResult]
+
+    def __init__(self):
+        super().__init__()
 
     def call(self, bee_positions, tag_positions,
              orientations, ids, tag_saliencies,
