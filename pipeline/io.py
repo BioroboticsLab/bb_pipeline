@@ -238,8 +238,10 @@ def get_timestamps(path_video, ts_format, path_filelists):
     # the same filename (apart from the extension).
     if ts_format == '2016':
         assert path_filelists is None
-        txt_path = path_video.replace('mkv', 'txt')
-        fnames = open(txt_path, 'r').readlines()
+        file_type = path_video.split(".")[-1]
+        txt_path = path_video[:-len(file_type)] + "txt"
+        with open(txt_path, 'r') as f:
+            fnames = f.read().splitlines()
         return [
             parse_image_fname(fn, format='iso')[1].timestamp() for fn in fnames
         ]
