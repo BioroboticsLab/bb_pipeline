@@ -29,10 +29,16 @@ def get_shared_positional_arguments():
 
 def get_shared_optional_arguments():
     arguments = list()
+
+    def none_or_str(value):
+        if value == 'None':
+            return None
+        return value
+
     arguments.append(('--text_root_path',
                       {'help': 'root path for beesbook image name text files.' +
                                'must be set if timestamp_format is 2014 or 2015.',
-                       'type': str}))
+                       'type': none_or_str}))
     arguments.append(('--num_threads', {'help': 'number of images to process in parallel',
                                         'type': int, 'default': 1}))
     return arguments
