@@ -97,6 +97,10 @@ def video_generator(path_video,
             log_callback(i)
         img = frame
         yield data_source, img, timestamps[i]
+    if i != len(timestamps):
+        raise RuntimeError('Number of loaded frames ({}) did not match number of timestamps ({})'.format(
+            i, len(timestamps)
+        ))
 
 
 class Sink:
