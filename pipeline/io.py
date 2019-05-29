@@ -92,14 +92,16 @@ def video_generator(path_video,
     timestamps = get_timestamps(path_video, ts_format, path_filelists)
     fname_video = os.path.basename(path_video)
     data_source = DataSource.new_message(filename=fname_video)
-    for i, frame in enumerate(VideoReader(path_video, stderr_fd)):
+    for frame_index, frame in enumerate(VideoReader(path_video, stderr_fd)):
         if log_callback is not None:
-            log_callback(i)
+            log_callback(frame_index)
         img = frame
-        yield data_source, img, timestamps[i]
-    if i != len(timestamps):
+        yield data_source, img, timestamps[frame_index]
+        
+    loaded_frame_count = frame_index + 1
+    if loaded_frame_count != len(timestamps):
         raise RuntimeError('Number of loaded frames ({}) did not match number of timestamps ({})'.format(
-            i, len(timestamps)
+            loaded_frame_count, len(timestamps)
         ))
 
 
