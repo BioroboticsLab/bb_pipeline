@@ -7,7 +7,7 @@ from skimage.io import imread
 from scipy.ndimage import zoom as scipy_zoom
 from scipy.ndimage.filters import gaussian_filter
 from bb_binary import parse_image_fname
-from keras.models import load_model
+from tensorflow.keras.models import load_model
 import tensorflow as tf
 from pipeline.stages.stage import PipelineStage
 from pipeline.objects import Filename, Image, Timestamp, \
@@ -18,19 +18,18 @@ from pipeline.objects import Filename, Image, Timestamp, \
     TagSaliencyImage, BeeRegions, TagRegions
 
 
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+  try:
+    # Currently, memory growth needs to be the same across GPUs
+    for gpu in gpus:
+      tf.config.experimental.set_memory_growth(gpu, True)
+    logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+    print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+  except RuntimeError as e:
+    # Memory growth must be set before GPUs have been initialized
+    print(e)
 
-tensorflow_session = None
-def get_tensorflow_session():
-    global tensorflow_session
-    if tensorflow_session is None:
-        from keras.backend.tensorflow_backend import set_session
-        config = tf.ConfigProto()
-        config.gpu_options.allow_growth = True
-        tensorflow_session = tf.Session(config=config)
-        set_session(tensorflow_session)
-    return tensorflow_session
-
-    
 
 def zoom(image, zoom_factor, gpu=True):
     if not gpu:
@@ -58,8 +57,6 @@ def zoom(image, zoom_factor, gpu=True):
 class InitializedPipelineStage(PipelineStage):
     def __init__(self):
         super().__init__()
-        # Make sure global tensorflow session is available.
-        get_tensorflow_session()
 
 class ImageReader(InitializedPipelineStage):
     requires = [Filename]
