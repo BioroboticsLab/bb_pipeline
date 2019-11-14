@@ -9,11 +9,11 @@ import matplotlib
 from pipeline.stages.stage import PipelineStage
 from pipeline.objects import Image, Orientations, IDs, SaliencyOverlay, \
     TagLocalizerPositions, LocalizerPositionsOverlay, FinalResultOverlay, \
-    TagSaliencyImage, CrownOverlay, LocalizerShapes
+    CrownOverlay, LocalizerShapes, SaliencyImages
 
 
 class SaliencyVisualizer(PipelineStage):
-    requires = [Image, TagSaliencyImage]
+    requires = [Image, SaliencyImages]
     provides = [SaliencyOverlay]
 
     def __init__(self, hue=240 / 360., gamma=0.2):
@@ -21,7 +21,8 @@ class SaliencyVisualizer(PipelineStage):
         self.gamma = gamma
 
     def call(self, image, saliency_image):
-        img_resize = resize(image, saliency_image.shape)
+        # TODO: fix hardcoded index of tag saliency image
+        img_resize = resize(image, saliency_image[:, :, 1].shape)
         saliency_range = max(0.15, saliency_image.max() - saliency_image.min())
         saliency_norm = (
             saliency_image - saliency_image.min()) / saliency_range

@@ -1,6 +1,8 @@
 import cv2
 import numbers
 import numpy as np
+import skimage
+import h5py
 from skimage.exposure import equalize_hist
 from skimage.feature import peak_local_max
 from skimage.io import imread
@@ -13,22 +15,22 @@ from pipeline.stages.stage import PipelineStage
 from pipeline.objects import Filename, Image, Timestamp, \
     CameraIndex, Positions, Orientations, IDs, BeeSaliencies, \
     PipelineResult, BeeLocalizerPositions, LocalizerInputImage, \
-    BeeSaliencyImage, PaddedImage, LocalizerShapes, \
+    BeeTypes, PaddedImage, LocalizerShapes, SaliencyImages, \
     DecoderPredictions, TagLocalizerPositions, TagSaliencies, \
-    TagSaliencyImage, BeeRegions, TagRegions
+    BeeRegions, TagRegions
 
 
 gpus = tf.config.experimental.list_physical_devices('GPU')
 if gpus:
-  try:
-    # Currently, memory growth needs to be the same across GPUs
-    for gpu in gpus:
-      tf.config.experimental.set_memory_growth(gpu, True)
-    logical_gpus = tf.config.experimental.list_logical_devices('GPU')
-    print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
-  except RuntimeError as e:
-    # Memory growth must be set before GPUs have been initialized
-    print(e)
+    try:
+        # Currently, memory growth needs to be the same across GPUs
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+        logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+        print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+    except RuntimeError as e:
+        # Memory growth must be set before GPUs have been initialized
+        print(e)
 
 
 def zoom(image, zoom_factor, gpu=True):
@@ -113,28 +115,33 @@ class LocalizerPreprocessor(InitializedPipelineStage):
 class Localizer(InitializedPipelineStage):
     requires = [LocalizerInputImage, PaddedImage, LocalizerShapes]
     provides = [
+        SaliencyImages,
         TagRegions,
-        TagSaliencyImage,
         TagSaliencies,
         TagLocalizerPositions,
         BeeRegions,
-        BeeSaliencyImage,
         BeeSaliencies,
         BeeLocalizerPositions,
+        BeeTypes,
     ]
 
-    def __init__(self, model_path, threshold_tag=.7, threshold_bee=0.575):
+    def __init__(self, model_path, thresholds={}):
         super().__init__()
-        self.saliency_threshold_tag = float(threshold_tag)
-        self.saliency_threshold_bee = float(threshold_bee)
         self.model = load_model(model_path)
         self.model._make_predict_function()
+
+        with h5py.File(model_path, 'r') as f:
+            self.class_labels = list(f['labels'])
+            self.thresholds = dict(list(zip(self.class_labels, f['default_thresholds'])))
+
+        for k in thresholds.keys():
+            self.thresholds[k] = thresholds[k]
 
     @staticmethod
     def extract_saliencies(positions, saliency):
         saliencies = np.zeros((len(positions), 1))
         for idx, (r, c) in enumerate(positions):
-            saliencies[idx] = saliency[r, c]
+            saliencies[idx] = saliency[int(np.round(r)), int(np.round(c))]
         return saliencies
 
     @staticmethod
@@ -157,7 +164,8 @@ class Localizer(InitializedPipelineStage):
             rois = np.empty(shape=(0, 0, 0, 0))
         return rois, mask
 
-    def get_positions(self, saliency, dist, threshold):
+    @staticmethod
+    def get_positions(saliency, dist, threshold):
         assert (isinstance(dist, numbers.Integral))
         dist = int(dist)
         below_thresh = saliency < threshold
@@ -166,29 +174,51 @@ class Localizer(InitializedPipelineStage):
         positions = peak_local_max(im, min_distance=dist)
         return positions
 
+    @staticmethod
+    def get_subpixel_offsets(saliency, position, subpixel_range):
+        sample = saliency[position[0]-subpixel_range:position[0]+subpixel_range,
+                          position[1]-subpixel_range:position[1]+subpixel_range]
+
+        M = skimage.measure.moments(sample)
+        centroid = (M[1, 0] / M[0, 0], M[0, 1] / M[0, 0])
+
+        return (centroid[0] - (subpixel_range - 0.5), centroid[1] - (subpixel_range - 0.5))
+
+    @staticmethod
+    def get_predicted_positions(saliency, threshold, min_distance=1, padding=128,
+                                subpixel_precision=True, subpixel_range=3):
+        positions = skimage.feature.peak_local_max(
+            saliency,
+            min_distance=min_distance,
+            threshold_abs=threshold
+        )
+
+        if subpixel_precision:
+            saliency_padded = np.pad(saliency, pad_width=subpixel_range, constant_values=0)
+            subpixel_offsets = [
+                Localizer.get_subpixel_offsets(saliency_padded, p + subpixel_range, subpixel_range=subpixel_range) for p in positions]
+
+            positions = positions.astype(np.float32)
+            for idx in range(len(positions)):
+                positions[idx, 0] += subpixel_offsets[idx][0]
+                positions[idx, 1] += subpixel_offsets[idx][1]
+
+        padded_positions = ((((positions + 5) * 2 + 1) * 2 + 1) * 2 + 1)
+
+        predictions_positions = padded_positions - padding
+
+        return padded_positions, predictions_positions, positions
+
     def process_saliency(self, saliency, scale_factor, pad_size,
                          roi_size, orig_image, threshold, sigma=3/4):
-        saliency = gaussian_filter(saliency[0, :, :, 0], sigma=sigma)
+        saliency = saliency[0, :, :]
 
-        # 32 is tag size, 2 * 2 due to downsampling in saliency network
-        positions_down = self.get_positions(
-            saliency,
-            dist=int(32 / (2 * 2 * scale_factor) - 1),
-            threshold=threshold)
-        saliencies = self.extract_saliencies(positions_down, saliency)
-
-        # TODO: investigate source of offset
-        # probably a bias in the localizer train data caused by the
-        # old pipeline
-        offset = -5
-        # simulate reverse padding and downsampling of saliency network
-        padded_positions = (((((positions_down + 3) * 2) + 2) * 2 + 3) * 2) * \
-            scale_factor + offset
-
-        positions_img = padded_positions - pad_size
+        padded_positions, positions_img, saliency_positions = Localizer.get_predicted_positions(saliency, threshold, padding=pad_size)
 
         rois, mask = self.extract_rois(padded_positions, orig_image, roi_size)
         rois = rois.astype(np.float32) / 255.
+
+        saliencies = self.extract_saliencies(saliency_positions, saliency)
 
         return [rois, saliency, saliencies, positions_img]
 
@@ -207,16 +237,36 @@ class Localizer(InitializedPipelineStage):
 
         saliencies = self.model.predict(image_downsampled[None, :, :, None])
 
-        tag_results = list(self.process_saliency(
-            saliencies[0].copy(), scale_factor, pad_size, roi_size,
-            orig_image, self.saliency_threshold_tag)
-        )
-        bee_results = list(self.process_saliency(
-            saliencies[1].copy(), scale_factor, pad_size, roi_size,
-            orig_image, self.saliency_threshold_bee)
-        )
+        bee_regions = []
+        bee_saliencies = []
+        bee_positions = []
+        bee_types = []
+        tag_results = None
 
-        return tag_results + bee_results
+        for class_idx, class_label in enumerate(self.class_labels):
+            results = list(self.process_saliency(
+                saliencies[:, :, :, class_idx].copy(), scale_factor, pad_size, roi_size,
+                orig_image, self.thresholds[class_label])
+            )
+
+            if class_label.decode('utf-8', 'ignore') == 'MarkedBee':
+                tr, _, ts, tp = results
+                tag_results = [tr, ts, tp]
+            else:
+                br, _, bs, bp = results
+                bee_regions.append(br)
+                bee_saliencies.append(bs)
+                bee_positions.append(bp)
+                bee_types.append([class_label for _ in range(len(br))])
+
+        bee_regions = np.concatenate(bee_regions)
+        bee_saliencies = np.concatenate(bee_saliencies)
+        bee_positions = np.concatenate(bee_positions)
+        bee_types = np.concatenate(bee_types)
+
+        assert tag_results is not None
+
+        return [saliencies[0]] + tag_results + [bee_regions, bee_saliencies, bee_positions, bee_types]
 
 
 class Decoder(InitializedPipelineStage):
@@ -242,7 +292,6 @@ class Decoder(InitializedPipelineStage):
         if self.uses_hist_equalization:
             cropped_rois = np.stack(
                 [equalize_hist(roi) for roi in cropped_rois])
-
         return cropped_rois[:, 0, :, :, None]
 
     def predict(self, regions):
@@ -280,7 +329,7 @@ class Decoder(InitializedPipelineStage):
 class ResultMerger(InitializedPipelineStage):
     requires = [BeeLocalizerPositions, Positions,
                 Orientations, IDs, TagSaliencies,
-                BeeSaliencies]
+                BeeSaliencies, BeeTypes]
     provides = [PipelineResult]
 
     def __init__(self):
@@ -288,7 +337,7 @@ class ResultMerger(InitializedPipelineStage):
 
     def call(self, bee_positions, tag_positions,
              orientations, ids, tag_saliencies,
-             bee_saliencies):
+             bee_saliencies, bee_types):
         return PipelineResult(bee_positions, tag_positions,
                               orientations, ids, tag_saliencies,
-                              bee_saliencies)
+                              bee_saliencies, bee_types)

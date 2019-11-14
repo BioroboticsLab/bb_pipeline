@@ -5,7 +5,8 @@ import uuid
 import os
 import subprocess as sp
 from bb_binary import DataSource, FrameContainer, \
-    parse_image_fname, parse_video_fname, get_timezone
+    parse_image_fname, parse_video_fname, get_timezone, \
+    DetectionBee
 from pipeline.objects import PipelineResult
 import numpy as np
 
@@ -97,7 +98,7 @@ def video_generator(path_video,
             log_callback(frame_index)
         img = frame
         yield data_source, img, timestamps[frame_index]
-        
+
     loaded_frame_count = frame_index + 1
     if loaded_frame_count != len(timestamps):
         raise RuntimeError('Number of loaded frames ({}) did not match number of timestamps ({})'.format(
@@ -129,6 +130,13 @@ class BBBinaryRepoSink(Sink):
         self.data_sources_fname = []
         self.data_sources = []
         self.camId = camId
+
+        # TODO: Don't hardcode this
+        self.label_map = {
+            b'UnmarkedBee': DetectionBee.Type.untagged,
+            b'BeeInCell': DetectionBee.Type.inCell,
+            b'UpsideDownBee': DetectionBee.Type.upsideDown
+        }
 
     def add_frame(self, data_source, results, timestamp):
         detections = results[PipelineResult]
@@ -162,8 +170,7 @@ class BBBinaryRepoSink(Sink):
             frame.dataSourceIdx = data_source_idx
             frame.frameIdx = int(i)
             frame.timestamp = timestamp
-            detections_builder = frame.detectionsUnion.init(
-                'detectionsDP', len(detection.tag_positions))
+            detections_builder = frame.init('detectionsDP', len(detection.tag_positions))
             for j, db in enumerate(detections_builder):
                 db.idx = j
                 db.xpos = int(detection.tag_positions[j, 1])
@@ -171,18 +178,18 @@ class BBBinaryRepoSink(Sink):
                 db.zRotation = float(detection.orientations[j, 0])
                 db.yRotation = float(detection.orientations[j, 1])
                 db.xRotation = float(detection.orientations[j, 2])
-                db.localizerSaliency = float(detection.tag_saliencies[j, 0])
+                db.localizerSaliency = float(detection.tag_saliencies[j])
                 decodedId = db.init('decodedId', len(detection.ids[j]))
                 for k, bit in enumerate(detection.ids[j]):
                     decodedId[k] = int(round(255 * bit))
 
-            detections_builder = frame.init(
-                'detectionsBees', len(detection.bee_positions))
+            detections_builder = frame.init('detectionsBees', len(detection.bee_positions))
             for j, db in enumerate(detections_builder):
                 db.idx = j
                 db.xpos = int(detection.bee_positions[j, 1])
                 db.ypos = int(detection.bee_positions[j, 0])
-                db.localizerSaliency = float(detection.bee_saliencies[j, 0])
+                db.localizerSaliency = float(detection.bee_saliencies[j])
+                db.type = self.label_map[detection.bee_types[j]]
 
         return fc
 

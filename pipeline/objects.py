@@ -9,13 +9,14 @@ class PipelineObject(object):
 class PipelineResult(PipelineObject):
     def __init__(self, bee_positions, tag_positions,
                  orientations, ids, tag_saliencies,
-                 bee_saliencies):
+                 bee_saliencies, bee_types):
         self.bee_positions = bee_positions
         self.tag_positions = tag_positions
         self.orientations = orientations
         self.ids = ids
         self.bee_saliencies = bee_saliencies
         self.tag_saliencies = tag_saliencies
+        self.bee_types = bee_types
 
 
 class PipelineObjectDescription(object):
@@ -105,9 +106,9 @@ class TagRegions(NumpyArrayDescription):
     ndim = 4
 
 
-class TagSaliencyImage(NumpyArrayDescription):
-    ''' Tag saliency image (downsampled image coordinates) '''
-    ndim = 2
+class SaliencyImages(NumpyArrayDescription):
+    ''' Saliency image tensor (downsampled image coordinates) '''
+    ndim = 3
 
 
 class TagSaliencies(NumpyArrayDescription):
@@ -119,17 +120,17 @@ class TagLocalizerPositions(NumpyArrayDescription):
     pass
 
 
-class BeeSaliencyImage(NumpyArrayDescription):
-    ''' Bee saliency image (downsampled image coordinates) '''
-    ndim = 2
-
-
 class BeeSaliencies(NumpyArrayDescription):
     pass
 
 
 class BeeLocalizerPositions(NumpyArrayDescription):
     ''' Center positions of localized bees (original image coordinates) '''
+    pass
+
+
+class BeeTypes(NumpyArrayDescription):
+    ''' Types of unmarked bee detections as strings '''
     pass
 
 
