@@ -23,7 +23,7 @@ def process_video(args):
 
     camId, _, _ = parse_video_fname(args.video_path)
     logger.info('Parsed camId = {}'.format(camId))
-    gen_processor = GeneratorProcessor(plines, lambda: BBBinaryRepoSink(repo, camId=camId))
+    gen_processor = GeneratorProcessor(plines, lambda: BBBinaryRepoSink(repo, camId=camId), use_tqdm=args.progressbar)
 
     logger.info('Processing video frames from {}'.format(args.video_path))
     gen_processor(video_generator(args.video_path, args.timestamp_format, args.text_root_path))

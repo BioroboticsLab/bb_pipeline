@@ -7,6 +7,7 @@ import configparser
 from inspect import Parameter
 import os
 import copy
+import tqdm
 
 # for backward compatibility
 from pipeline.io import video_generator, BBBinaryRepoSink  # noqa
@@ -17,27 +18,32 @@ def _processSingleInput(pipeline, data_source, img, ts):
 
 
 class GeneratorProcessor(object):
-    def __init__(self, pipelines, sink_factory):
+    def __init__(self, pipelines, sink_factory, use_tqdm=False):
         if type(pipelines) == Pipeline:
             pipelines = [pipelines]
         self.pipelines = pipelines
         self.parallel = Parallel(n_jobs=len(pipelines), backend='threading')
         self.sink_factory = sink_factory
+        self.use_tqdm = use_tqdm
 
     def __call__(self, generator):
         sink = self.sink_factory()
         evaluations = self.parallel(
             delayed(_processSingleInput)(*args)
             for args in GeneratorProcessor._joblib_generator(
-                self.pipelines, generator))
+                self.pipelines, generator, self.use_tqdm))
 
         for (data_source, results, ts) in evaluations:
             sink.add_frame(data_source, results, ts)
         sink.finish()
 
     @staticmethod
-    def _joblib_generator(pipelines, generator):
-        for idx, (data_source, img, ts) in enumerate(generator):
+    def _joblib_generator(pipelines, generator, use_tqdm=False):
+        iterator = generator
+        if use_tqdm:
+            iterator = tqdm.tqdm(iterator)
+
+        for idx, (data_source, img, ts) in enumerate(iterator):
             pipeline = pipelines[idx % len(pipelines)]
             yield pipeline, data_source, img, ts
 

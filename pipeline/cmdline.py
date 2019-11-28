@@ -41,4 +41,6 @@ def get_shared_optional_arguments():
                        'type': none_or_str}))
     arguments.append(('--num_threads', {'help': 'number of images to process in parallel',
                                         'type': int, 'default': 1}))
+    arguments.append(('--progressbar', {'help': 'show progressbar while processing',
+                                        'type': bool, 'default': True}))
     return arguments
