@@ -249,7 +249,7 @@ class Localizer(InitializedPipelineStage):
                 orig_image, self.thresholds[class_label])
             )
 
-            if class_label.decode('utf-8', 'ignore') == 'MarkedBee':
+            if class_label == 'MarkedBee':
                 tr, _, ts, tp = results
                 tag_results = [tr, ts, tp]
             else:
