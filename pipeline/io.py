@@ -133,9 +133,9 @@ class BBBinaryRepoSink(Sink):
 
         # TODO: Don't hardcode this
         self.label_map = {
-            b'UnmarkedBee': DetectionBee.Type.untagged,
-            b'BeeInCell': DetectionBee.Type.inCell,
-            b'UpsideDownBee': DetectionBee.Type.upsideDown
+            'UnmarkedBee': DetectionBee.Type.untagged,
+            'BeeInCell': DetectionBee.Type.inCell,
+            'UpsideDownBee': DetectionBee.Type.upsideDown
         }
 
     def add_frame(self, data_source, results, timestamp):
