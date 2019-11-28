@@ -127,7 +127,7 @@ class Localizer(InitializedPipelineStage):
 
     def __init__(self, model_path, thresholds={}):
         super().__init__()
-        self.model = load_model(model_path)
+        self.model = load_model(model_path, compile=False)
         self.model._make_predict_function()
 
         with h5py.File(model_path, 'r') as f:
@@ -281,7 +281,7 @@ class Decoder(InitializedPipelineStage):
 
     def __init__(self, model_path, use_hist_equalization=True):
         super().__init__()
-        self.model = load_model(model_path)
+        self.model = load_model(model_path, compile=False)
         self.uses_hist_equalization = use_hist_equalization
 
         self.model._make_predict_function()
