@@ -99,6 +99,9 @@ def video_generator(path_video,
         img = frame
         yield data_source, img, timestamps[frame_index]
 
+    if 'frame_index' not in locals():
+        raise RuntimeError('No frames loaded from video')
+
     loaded_frame_count = frame_index + 1
     if loaded_frame_count != len(timestamps):
         raise RuntimeError('Number of loaded frames ({}) did not match number of timestamps ({})'.format(
