@@ -254,10 +254,12 @@ class Localizer(InitializedPipelineStage):
                 tag_results = [tr, ts, tp]
             else:
                 br, _, bs, bp = results
-                bee_regions.append(br)
-                bee_saliencies.append(bs)
-                bee_positions.append(bp)
-                bee_types.append([class_label for _ in range(len(br))])
+
+                if len(br):
+                    bee_regions.append(br)
+                    bee_saliencies.append(bs)
+                    bee_positions.append(bp)
+                    bee_types.append([class_label for _ in range(len(br))])
 
         bee_regions = np.concatenate(bee_regions)
         bee_saliencies = np.concatenate(bee_saliencies)
