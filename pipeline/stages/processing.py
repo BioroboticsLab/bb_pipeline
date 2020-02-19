@@ -261,10 +261,16 @@ class Localizer(InitializedPipelineStage):
                     bee_positions.append(bp)
                     bee_types.append([class_label for _ in range(len(br))])
 
-        bee_regions = np.concatenate(bee_regions)
-        bee_saliencies = np.concatenate(bee_saliencies)
-        bee_positions = np.concatenate(bee_positions)
-        bee_types = np.concatenate(bee_types)
+        if len(bee_regions):
+            bee_regions = np.concatenate(bee_regions)
+            bee_saliencies = np.concatenate(bee_saliencies)
+            bee_positions = np.concatenate(bee_positions)
+            bee_types = np.concatenate(bee_types)
+        else:
+            bee_regions = np.ndarray(shape=(0, 0, 0, 0))
+            bee_saliencies = np.ndarray(shape=(0, 0, 0, 0))
+            bee_positions = np.ndarray(shape=(0, 0, 0))
+            bee_types = np.ndarray(shape=(0))
 
         assert tag_results is not None
 
