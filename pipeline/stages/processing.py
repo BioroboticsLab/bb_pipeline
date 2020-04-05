@@ -7,7 +7,6 @@ import numpy as np
 import skimage
 import tensorflow as tf
 from scipy.ndimage import zoom as scipy_zoom
-from scipy.ndimage.filters import gaussian_filter
 from skimage.exposure import equalize_hist
 from skimage.feature import peak_local_max
 from skimage.io import imread

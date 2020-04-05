@@ -10,7 +10,6 @@ import tqdm
 from joblib import Parallel, delayed
 
 import pipeline.stages
-from pipeline.io import BBBinaryRepoSink, video_generator
 
 
 def _processSingleInput(pipeline, data_source, img, ts):
