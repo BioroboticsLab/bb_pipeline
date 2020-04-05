@@ -3,19 +3,19 @@
 An image is sent to the server, which sends back the requested results.
 """
 
-from tempfile import NamedTemporaryFile
-import json
-from urllib import parse
 import inspect
-
-import numpy as np
-from flask import Flask, request, abort
-from scipy.misc import imread, imsave
-import msgpack
 import io
+import json
+from tempfile import NamedTemporaryFile
+from urllib import parse
+
 import cachetools
-from pipeline import Pipeline
-from pipeline import objects
+import msgpack
+import numpy as np
+from flask import Flask, abort, request
+from scipy.misc import imread, imsave
+
+from pipeline import Pipeline, objects
 from pipeline.pipeline import get_auto_config
 
 app = Flask(__name__)
@@ -42,13 +42,11 @@ def init_pipeline(output, no_localizer):
     """
 
     if no_localizer:
-        pipeline = Pipeline([objects.Regions, objects.LocalizerPositions],
-                            output,
-                            **get_auto_config())
+        pipeline = Pipeline(
+            [objects.Regions, objects.LocalizerPositions], output, **get_auto_config()
+        )
     else:
-        pipeline = Pipeline([objects.Image],
-                            output,
-                            **get_auto_config())
+        pipeline = Pipeline([objects.Image], output, **get_auto_config())
     return pipeline
 
 
@@ -79,12 +77,12 @@ def get_cached_pipeline(output, no_localizer):
     else:
         cache = pipeline_cache
     if output_key in cache:
-        print('Pipeline is cached.')
+        print("Pipeline is cached.")
         return cache[output_key]
     else:
-        print('Pipeline is not cached, initializing new pipeline...')
+        print("Pipeline is not cached, initializing new pipeline...")
         pipeline = init_pipeline(output, no_localizer)
-        print('...done. Adding to cache.')
+        print("...done. Adding to cache.")
         cache[output_key] = pipeline
         return pipeline
 
@@ -101,7 +99,7 @@ def png_encode(instance):
     """
     if isinstance(instance, np.ndarray):
         b = io.BytesIO()
-        imsave(b, instance, 'png')
+        imsave(b, instance, "png")
         return b.getvalue()
     return instance
 
@@ -129,12 +127,11 @@ def process_image(pipeline, image, png, no_localizer):
         pipeline_results = pipeline([image])
     results_dict = {}
     for (k, v) in pipeline_results.items():
-        results_dict[k.__name__] = (png_encode(
-            v) if (k.__name__ in png) else v.tolist())
+        results_dict[k.__name__] = png_encode(v) if (k.__name__ in png) else v.tolist()
     return msgpack.packb(results_dict)
 
 
-@app.route('/decode/<mode>', methods=['POST'])
+@app.route("/decode/<mode>", methods=["POST"])
 def api_message(mode):
     """This function handles the `/decode` URL call.
     The next URL segment determines the decoding mode, `/single` for the
@@ -194,65 +191,68 @@ def api_message(mode):
     """
     if mode not in ["single", "automatic"]:
         abort(404)
-    if request.headers['Content-Type'] != 'application/octet-stream':
+    if request.headers["Content-Type"] != "application/octet-stream":
         abort(415)
 
-    no_localizer = (mode == "single")
+    no_localizer = mode == "single"
 
-    print('\nRetrieving process request')
-    print('Decoding mode: {}'.format('single' if no_localizer else 'automatic'))
-    url_output_param = request.args.get('output')
+    print("\nRetrieving process request")
+    print("Decoding mode: {}".format("single" if no_localizer else "automatic"))
+    url_output_param = request.args.get("output")
     if url_output_param is None:
-        print('No output specified, using defaults')
+        print("No output specified, using defaults")
         pipeline = get_cached_pipeline(default_output, no_localizer)
     else:
         output_strings = json.loads(parse.unquote(url_output_param))
         if not output_strings:
-            print('No output specified, using defaults')
+            print("No output specified, using defaults")
             pipeline = get_cached_pipeline(default_output, no_localizer)
         else:
             output_objects = []
             for o in output_strings:
-                if o in ['PipelineObject', 'PipelineObjectDescription',
-                         'NumpyArrayDescription', 'FilenameDescription']:
-                    print('Illegal pipeline output specified: {}'.format(o))
-                    return 'Illegal pipeline output specified: {}'.format(o)
+                if o in [
+                    "PipelineObject",
+                    "PipelineObjectDescription",
+                    "NumpyArrayDescription",
+                    "FilenameDescription",
+                ]:
+                    print(f"Illegal pipeline output specified: {o}")
+                    return f"Illegal pipeline output specified: {o}"
                 else:
                     c = objects.__dict__.get(o)
                     if (c is None) or (not inspect.isclass(c)):
-                        print('Invalid pipeline output specified: {}'.format(o))
-                        return 'Invalid pipeline output specified: {}'.format(o)
+                        print(f"Invalid pipeline output specified: {o}")
+                        return f"Invalid pipeline output specified: {o}"
                     else:
                         output_objects.append(c)
-            print('Specified output: {}'.format(
-                [o.__name__ for o in output_objects]))
+            print("Specified output: {}".format([o.__name__ for o in output_objects]))
             output = frozenset(output_objects)
             pipeline = get_cached_pipeline(output, no_localizer)
-    png_please = request.args.get('png')
+    png_please = request.args.get("png")
     if png_please is None:
         png = []
     else:
         png = json.loads(parse.unquote(png_please))
         if png:
-            print('Specified png-encoded output: {}'.format([p for p in png]))
+            print("Specified png-encoded output: {}".format([p for p in png]))
     try:
         with NamedTemporaryFile(delete=True) as f:
-            print('Loading image...')
+            print("Loading image...")
             f.write(request.data)
             image = imread(f)
             if no_localizer and (image.shape != (100, 100)):
-                print('Input image has wrong dimensions: {}'.format(image.shape))
-                return 'Input image has wrong dimensions: {}'.format(image.shape)
-            print('Processing image...')
+                print(f"Input image has wrong dimensions: {image.shape}")
+                return f"Input image has wrong dimensions: {image.shape}"
+            print("Processing image...")
             return process_image(pipeline, image, png, no_localizer)
     except Exception as err:
-        print('Exception: {}'.format(err))
-        return 'Exception: {}'.format(err)
+        print(f"Exception: {err}")
+        return f"Exception: {err}"
 
 
 def main():  # pragma: no cover
-    app.run(host='0.0.0.0', port=10000)
+    app.run(host="0.0.0.0", port=10000)
 
 
-if __name__ == '__main__':  # pragma: no cover
+if __name__ == "__main__":  # pragma: no cover
     main()

@@ -1,7 +1,11 @@
-from pipeline.objects import PipelineObjectDescription, CameraIndex, \
-    NumpyArrayDescription
-import pytest
 import numpy as np
+import pytest
+
+from pipeline.objects import (
+    CameraIndex,
+    NumpyArrayDescription,
+    PipelineObjectDescription,
+)
 
 
 def test_simple_objects():

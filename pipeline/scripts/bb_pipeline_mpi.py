@@ -2,14 +2,15 @@
 
 import argparse
 import atexit
-from itertools import chain
 import os
 import shutil
+from itertools import chain
+
 from mpi4py import MPI
 
 
 def process_video(video_path, repo_output_path, ts_format, text_root_path, rank):
-    info = lambda msg: logger.info('Process {}: {}'.format(rank, msg))
+    info = lambda msg: logger.info(f"Process {rank}: {msg}")
 
     import theano
     from pipeline import Pipeline
@@ -19,45 +20,56 @@ def process_video(video_path, repo_output_path, ts_format, text_root_path, rank)
     from pipeline.objects import PipelineResult, Image, Timestamp
     from bb_binary import Repository, parse_video_fname
 
-    repo_output_path = os.path.join(repo_output_path, 'process_{}'.format(rank))
+    repo_output_path = os.path.join(repo_output_path, f"process_{rank}")
 
-    info('Theano compile dir: {}'.format(theano.config.base_compiledir))
-    info('Output dir: {}'.format(repo_output_path))
+    info(f"Theano compile dir: {theano.config.base_compiledir}")
+    info(f"Output dir: {repo_output_path}")
 
     config = get_auto_config()
 
-    info('Initializing pipeline')
+    info("Initializing pipeline")
     pipeline = Pipeline([Image, Timestamp], [PipelineResult], **config)
 
-    info('Loading bb_binary repository {}'.format(repo_output_path))
+    info(f"Loading bb_binary repository {repo_output_path}")
     repo = Repository(repo_output_path)
 
     camId, _, _ = parse_video_fname(video_path)
-    info('Parsed camId = {}'.format(camId))
-    gen_processor = GeneratorProcessor(pipeline,
-                                       lambda: BBBinaryRepoSink(repo, camId=camId))
+    info(f"Parsed camId = {camId}")
+    gen_processor = GeneratorProcessor(
+        pipeline, lambda: BBBinaryRepoSink(repo, camId=camId)
+    )
 
-    log_callback = lambda frame_idx: info('Processing frame {} from {}'.format(frame_idx,
-                                                                               video_path))
-    ffmpeg_stderr_fd = open('process_{}_ffmpeg_stderr.log'.format(rank), 'w')
+    log_callback = lambda frame_idx: info(
+        f"Processing frame {frame_idx} from {video_path}"
+    )
+    ffmpeg_stderr_fd = open(f"process_{rank}_ffmpeg_stderr.log", "w")
 
-    info('Processing video frames from {}'.format(video_path))
-    gen_processor(video_generator(video_path, ts_format, text_root_path,
-                                  log_callback, ffmpeg_stderr_fd))
+    info(f"Processing video frames from {video_path}")
+    gen_processor(
+        video_generator(
+            video_path, ts_format, text_root_path, log_callback, ffmpeg_stderr_fd
+        )
+    )
 
 
 def parse_args(comm):  # pragma: no cover
-    from pipeline.cmdline import get_shared_positional_arguments, get_shared_optional_arguments
+    from pipeline.cmdline import (
+        get_shared_positional_arguments,
+        get_shared_optional_arguments,
+    )
 
     parser = argparse.ArgumentParser(
-        prog='BeesBook MPI batch processor',
-        description='Batch process video using the beesbook pipeline')
+        prog="BeesBook MPI batch processor",
+        description="Batch process video using the beesbook pipeline",
+    )
 
-    parser.add_argument('video_list_path',
-                        help='root path of input video list',
-                        type=str)
+    parser.add_argument(
+        "video_list_path", help="root path of input video list", type=str
+    )
 
-    for arg, kwargs in chain(get_shared_positional_arguments(), get_shared_optional_arguments()):
+    for arg, kwargs in chain(
+        get_shared_positional_arguments(), get_shared_optional_arguments()
+    ):
         parser.add_argument(arg, **kwargs)
 
     args = None
@@ -88,35 +100,36 @@ def main():  # pragma: no cover
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
 
-    if 'PIPELINE_TMP_DIR' in os.environ:
-        compile_dir = '{}/theano_compile_process_{}'.format(os.environ['PIPELINE_TMP_DIR'], rank)
-        os.environ["THEANO_FLAGS"] = ("base_compiledir='{}'".format(compile_dir))
+    if "PIPELINE_TMP_DIR" in os.environ:
+        compile_dir = "{}/theano_compile_process_{}".format(
+            os.environ["PIPELINE_TMP_DIR"], rank
+        )
+        os.environ["THEANO_FLAGS"] = f"base_compiledir='{compile_dir}'"
 
         atexit.register(delete_folder, compile_dir)
 
     from pipeline.cmdline import logger
-    info = lambda msg: logger.info('Process {}: {}'.format(rank, msg))
+
+    info = lambda msg: logger.info(f"Process {rank}: {msg}")
 
     video_list_path, repo_output_path, ts_format, text_root_path = parse_args(comm)
 
-    video_paths = [s.strip() for s in open(video_list_path, 'r').readlines()]
+    video_paths = [s.strip() for s in open(video_list_path).readlines()]
 
-    if rank is 0:
-        logger.info('There are {} processes'.format(comm.Get_size()))
+    if rank == 0:
+        logger.info(f"There are {comm.Get_size()} processes")
 
     if rank < len(video_paths):
-        process_video(video_paths[rank],
-                      repo_output_path,
-                      ts_format,
-                      text_root_path,
-                      rank)
+        process_video(
+            video_paths[rank], repo_output_path, ts_format, text_root_path, rank
+        )
     else:
-        logger.warning('Process {}: No file to process'.format(rank))
+        logger.warning(f"Process {rank}: No file to process")
 
-    info('Reached Barrier.')
+    info("Reached Barrier.")
     comm.Barrier()
-    info('Exiting.')
+    info("Exiting.")
 
 
-if __name__ == '__main__':  # pragma: no cover
+if __name__ == "__main__":  # pragma: no cover
     main()

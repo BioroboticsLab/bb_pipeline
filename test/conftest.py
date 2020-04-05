@@ -1,11 +1,19 @@
-
-import pytest
 import os
 import pickle
+
+import pytest
+
 from pipeline import Pipeline
+from pipeline.objects import (
+    Filename,
+    IDs,
+    Image,
+    LocalizerPositions,
+    Orientations,
+    Saliencies,
+    SaliencyImage,
+)
 from pipeline.pipeline import get_auto_config
-from pipeline.objects import Filename, LocalizerPositions, IDs, Saliencies, \
-    Orientations, Image, SaliencyImage
 
 
 def get_test_fname(name):
@@ -15,29 +23,31 @@ def get_test_fname(name):
 
 @pytest.fixture
 def bees_image():
-    return get_test_fname('data/Cam_2_20150821161530_884267.jpeg')
+    return get_test_fname("data/Cam_2_20150821161530_884267.jpeg")
 
 
 @pytest.fixture
 def bee_in_the_center_image():
-    return get_test_fname('data/a_bee_in_the_center.jpeg')
+    return get_test_fname("data/a_bee_in_the_center.jpeg")
 
 
 @pytest.fixture
 def bees_video():
     return get_test_fname(
-        'data/Cam_0_20150821161642_833382_TO_Cam_0_20150821161648_253846.mkv')
+        "data/Cam_0_20150821161642_833382_TO_Cam_0_20150821161648_253846.mkv"
+    )
 
 
 @pytest.fixture
 def filelists_path():
-    return get_test_fname('data/filelists')
+    return get_test_fname("data/filelists")
 
 
 @pytest.fixture
 def bees_video_2016():
     return get_test_fname(
-        'data/Cam_0_2016-07-19T18:21:33.097618Z--2016-07-19T18:21:34.092604Z.mkv')
+        "data/Cam_0_2016-07-19T18:21:33.097618Z--2016-07-19T18:21:34.092604Z.mkv"
+    )
 
 
 @pytest.fixture
@@ -53,10 +63,11 @@ def pipeline_results(pipeline_config, bees_image, outdir):
         with open(str(output_fname), "rb") as f:
             outputs = pickle.load(f)
     else:
-        pipeline = Pipeline([Filename],
-                            [LocalizerPositions, IDs, Saliencies, Orientations,
-                             Image, SaliencyImage],
-                            **pipeline_config)
+        pipeline = Pipeline(
+            [Filename],
+            [LocalizerPositions, IDs, Saliencies, Orientations, Image, SaliencyImage],
+            **pipeline_config,
+        )
         outputs = pipeline([bees_image])
         with open(str(output_fname), "wb") as f:
             pickle.dump(outputs, f)
@@ -66,6 +77,7 @@ def pipeline_results(pipeline_config, bees_image, outdir):
 @pytest.fixture
 def outdir():
     from py.path import local
+
     path = local("test").join("out")
     if not path.ensure(dir=True):
         path.mkdir()

@@ -7,27 +7,41 @@ import shutil
 from itertools import chain
 from subprocess import call
 
-from ..cmdline import logger, get_shared_positional_arguments, get_shared_optional_arguments
+from ..cmdline import (
+    get_shared_optional_arguments,
+    get_shared_positional_arguments,
+    logger,
+)
+
 from .bb_pipeline import process_video
+
 
 def main():  # pragma: no cover
     parser = argparse.ArgumentParser(
-        prog='BeesBook pipeline batch processor',
-        description='Batch process video using the beesbook pipeline')
+        prog="BeesBook pipeline batch processor",
+        description="Batch process video using the beesbook pipeline",
+    )
 
-    parser.add_argument('--video_glob_pattern', help='glob pattern for files to process', type=str, default=None)
-    parser.add_argument('video_root_path', help='root path of input videos', type=str)
-    for arg, kwargs in chain(get_shared_positional_arguments(), get_shared_optional_arguments()):
+    parser.add_argument(
+        "--video_glob_pattern",
+        help="glob pattern for files to process",
+        type=str,
+        default=None,
+    )
+    parser.add_argument("video_root_path", help="root path of input videos", type=str)
+    for arg, kwargs in chain(
+        get_shared_positional_arguments(), get_shared_optional_arguments()
+    ):
         parser.add_argument(arg, **kwargs)
 
     args = parser.parse_args()
 
     pipeline_cmd = None
-    if os.path.exists(os.path.join(os.getcwd(), 'bb_pipeline')):
-        pipeline_cmd = os.path.join(os.getcwd(), 'bb_pipeline')
+    if os.path.exists(os.path.join(os.getcwd(), "bb_pipeline")):
+        pipeline_cmd = os.path.join(os.getcwd(), "bb_pipeline")
     else:
-        pipeline_cmd = shutil.which('bb_pipeline')
-    assert(pipeline_cmd is not None)
+        pipeline_cmd = shutil.which("bb_pipeline")
+    assert pipeline_cmd is not None
 
     video_files = []
     for root, dirs, files in os.walk(args.video_root_path):
@@ -41,12 +55,14 @@ def main():  # pragma: no cover
                         continue
                 video_files.append(full_path)
 
-    logger.info('Processing {} files: \n\t{}'.format(len(video_files), '\n\t'.join(video_files)))
+    logger.info(
+        "Processing {} files: \n\t{}".format(len(video_files), "\n\t".join(video_files))
+    )
 
     for fname in video_files:
         args.video_path = fname
         process_video(args)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
