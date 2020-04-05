@@ -1,3 +1,4 @@
+import json
 import numbers
 
 import cv2
@@ -157,6 +158,9 @@ class Localizer(InitializedPipelineStage):
             self.thresholds = dict(
                 list(zip(self.class_labels, f["default_thresholds"]))
             )
+
+        if isinstance(thresholds, str):
+            thresholds = json.loads(thresholds)
 
         for k in thresholds.keys():
             self.thresholds[k] = thresholds[k]
