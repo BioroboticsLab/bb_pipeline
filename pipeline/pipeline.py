@@ -63,14 +63,14 @@ class Pipeline:
         self.outputs = outputs
         self.config_dict = config
         self.available_stages = available_stages
-        self.required_stages = Pipeline.required_stages(
+        self.required_stages = Pipeline.get_required_stages(
             self.inputs, self.outputs, self.available_stages
         )
         self.stages = [self._instantiate_stage(s) for s in self.required_stages]
         self.pipeline = self._build_pipeline(self.stages)
 
     @staticmethod
-    def required_stages(
+    def get_required_stages(
         input_stages, output_stages, available_stages=pipeline.stages.Stages
     ):
         added_stages = set()
