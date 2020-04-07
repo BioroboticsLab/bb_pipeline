@@ -12,8 +12,10 @@ import bb_utils
 
 
 class TagDecoder:
-    def __init__(self, localizer_threshold=None):
+    def __init__(self, localizer_threshold=None, decoder_threshold=0.99):
         config = pipeline.pipeline.get_auto_config()
+
+        self.decoder_threshold = decoder_threshold
 
         if localizer_threshold is not None:
             config["Localizer"]["thresholds"] = json.dumps(
@@ -66,10 +68,9 @@ class TagDecoder:
             rescale_factors[best_factor_idx],
         )
 
-    @staticmethod
-    def get_ids(results, min_confidence=0.9):
+    def get_ids(self, results):
         confidences = np.product(np.abs(0.5 - results[IDs]) * 2, axis=-1)
-        high_conf_indices = np.argwhere(confidences > min_confidence)
+        high_conf_indices = np.argwhere(confidences > self.decoder_threshold)
 
         def _get_ferwar_id(idx):
             bbid = bb_utils.ids.BeesbookID.from_bb_binary(results[IDs][idx])
