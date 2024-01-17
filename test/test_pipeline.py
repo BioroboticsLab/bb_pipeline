@@ -5,7 +5,7 @@ import time
 import numpy as np
 import pytest
 import pytz
-from scipy.misc import imread, imsave
+from matplotlib.pyplot import imread, imsave
 from scipy.ndimage.interpolation import zoom
 
 from pipeline import Pipeline

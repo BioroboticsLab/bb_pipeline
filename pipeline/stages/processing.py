@@ -150,7 +150,7 @@ class Localizer(InitializedPipelineStage):
     def __init__(self, model_path, thresholds={}):
         super().__init__()
         self.model = load_model(model_path, compile=False)
-        self.model._make_predict_function()
+        self.model.make_predict_function()
 
         with h5py.File(model_path, "r") as f:
             self.class_labels = list(f["labels"])
@@ -362,7 +362,7 @@ class Decoder(InitializedPipelineStage):
         self.model = load_model(model_path, compile=False)
         self.uses_hist_equalization = use_hist_equalization
 
-        self.model._make_predict_function()
+        self.model.make_predict_function()
 
     def preprocess(self, regions):
         cropped_rois = regions[:, :, 34:-34, 34:-34]

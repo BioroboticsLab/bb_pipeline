@@ -2,7 +2,7 @@ import cv2
 import matplotlib
 import numpy as np
 from skimage.color import gray2rgb, hsv2rgb, rgb2hsv
-from skimage.draw import circle
+from skimage.draw import disk
 from skimage.exposure import adjust_gamma
 from skimage.transform import resize
 
@@ -81,9 +81,9 @@ class LocalizerVisualizer(PipelineStage):
 
         circles = np.zeros(shape=(height, width), dtype=np.bool)
         for x, y in coordinates:
-            rr, cc = circle(int(x), int(y), radius + line_width // 2)
+            rr, cc = disk((int(x), int(y)), radius + line_width // 2)
             circles[rr, cc] = True
-            rr, cc = circle(int(x), int(y), radius - line_width // 2)
+            rr, cc = disk((int(x), int(y)), radius - line_width // 2)
             circles[rr, cc] = False
 
         for i in range(3):
