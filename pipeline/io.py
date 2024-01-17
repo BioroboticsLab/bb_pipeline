@@ -66,10 +66,6 @@ class VideoReader:
         pipe = sp.Popen(resolution_command, stdout=sp.PIPE, stderr=sp.PIPE)
         infos = pipe.stdout.readlines()
 
-        # Check if infos list is empty and handle the error
-        if len(infos) < 2:
-            raise ValueError(f"Could not get video resolution for {video_path}")
-
         self.w, self.h = [int(s.decode("utf-8").strip().split("=")[1]) for s in infos]
 
         self.video_pipe = sp.Popen(
@@ -95,9 +91,7 @@ class VideoReader:
         return self.next()
 
     def __del__(self):
-        # Check if video_pipe attribute exists before trying to kill it
-        if hasattr(self, 'video_pipe'):
-            self.video_pipe.kill()
+        self.video_pipe.kill()
 
     def next(self):
         raw_image = self.video_pipe.stdout.read(self.h * self.w * 1)
