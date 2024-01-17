@@ -153,7 +153,7 @@ class Localizer(InitializedPipelineStage):
         self.model.make_predict_function()
 
         with h5py.File(model_path, "r") as f:
-            self.class_labels = list(f["labels"])
+            self.class_labels = [s.decode() for s in (f["labels"])]
             self.thresholds = dict(
                 list(zip(self.class_labels, f["default_thresholds"]))
             )
