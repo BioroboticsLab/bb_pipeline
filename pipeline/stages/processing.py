@@ -65,7 +65,7 @@ def zoom(image, zoom_factor, gpu=True):
 
     input_shape = (1, image.shape[0], image.shape[1], 1)
     target_shape = np.round(np.array(image.shape) * (zoom_factor))
-    target_shape = target_shape.astype(np.int)
+    target_shape = target_shape.astype(int)
     img = tf.placeholder(tf.float32, shape=input_shape, name="original_image")
     img_zoom = tf.image.resize_bicubic(img, target_shape)
 

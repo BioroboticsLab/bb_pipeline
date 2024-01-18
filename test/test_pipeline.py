@@ -167,7 +167,7 @@ def test_decoder(pipeline_config):
     assert len(ids) == len(positions)
 
     for pos, id in zip(positions, ids):
-        pos = np.round(pos).astype(np.int)
+        pos = np.round(pos).astype(int)
         id = "".join([str(int(b)) for b in (np.round(id))])
         print("Detection at ({}, {}) \t ID: {}".format(pos[0], pos[1], id))
 

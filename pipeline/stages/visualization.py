@@ -226,10 +226,10 @@ class ResultVisualizer(PipelineStage):
         overlay, z_rotation, position, line_width, arrow_length, arrow_color
     ):
         x_to = np.round(position[0] + arrow_length * np.cos(z_rotation)).astype(
-            np.int32
+            int
         )
         y_to = np.round(position[1] + arrow_length * np.sin(z_rotation)).astype(
-            np.int32
+            int
         )
         cv2.arrowedLine(
             overlay, tuple(position), (x_to, y_to), arrow_color, line_width, cv2.LINE_AA
@@ -251,7 +251,7 @@ class ResultVisualizer(PipelineStage):
     ):
         overlay = (np.copy(overlay) * 255).astype(np.uint8)
         for idx in range(len(positions)):
-            pos = positions[idx, ::-1].astype(np.int32)
+            pos = positions[idx, ::-1].astype(int)
             ResultVisualizer.draw_arrow(
                 overlay,
                 orientations[idx, 0],
