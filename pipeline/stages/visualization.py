@@ -79,7 +79,7 @@ class LocalizerVisualizer(PipelineStage):
         else:
             raise Exception(f"Did not understand image shape {image.shape}.")
 
-        circles = np.zeros(shape=(height, width), dtype=np.bool)
+        circles = np.zeros(shape=(height, width), dtype=bool)
         for x, y in coordinates:
             rr, cc = disk((int(x), int(y)), radius + line_width // 2)
             circles[rr, cc] = True
