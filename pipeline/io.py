@@ -65,6 +65,7 @@ class VideoReader:
 
         pipe = sp.Popen(resolution_command, stdout=sp.PIPE, stderr=sp.PIPE)
         infos = pipe.stdout.readlines()
+
         self.w, self.h = [int(s.decode("utf-8").strip().split("=")[1]) for s in infos]
 
         self.video_pipe = sp.Popen(

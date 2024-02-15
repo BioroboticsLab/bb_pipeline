@@ -65,7 +65,7 @@ def zoom(image, zoom_factor, gpu=True):
 
     input_shape = (1, image.shape[0], image.shape[1], 1)
     target_shape = np.round(np.array(image.shape) * (zoom_factor))
-    target_shape = target_shape.astype(np.int)
+    target_shape = target_shape.astype(int)
     img = tf.placeholder(tf.float32, shape=input_shape, name="original_image")
     img_zoom = tf.image.resize_bicubic(img, target_shape)
 
@@ -150,10 +150,10 @@ class Localizer(InitializedPipelineStage):
     def __init__(self, model_path, thresholds={}):
         super().__init__()
         self.model = load_model(model_path, compile=False)
-        self.model._make_predict_function()
+        self.model.make_predict_function()
 
         with h5py.File(model_path, "r") as f:
-            self.class_labels = list(f["labels"])
+            self.class_labels = [s.decode() for s in (f["labels"])]
             self.thresholds = dict(
                 list(zip(self.class_labels, f["default_thresholds"]))
             )
@@ -362,7 +362,7 @@ class Decoder(InitializedPipelineStage):
         self.model = load_model(model_path, compile=False)
         self.uses_hist_equalization = use_hist_equalization
 
-        self.model._make_predict_function()
+        self.model.make_predict_function()
 
     def preprocess(self, regions):
         cropped_rois = regions[:, :, 34:-34, 34:-34]
