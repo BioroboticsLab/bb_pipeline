@@ -78,7 +78,7 @@ class VideoReader:
         _, ext = os.path.splitext(video_path)
         if ext == ".mkv":
             format = None
-        elif ext == ".avi":
+        elif (ext == ".avi")|(ext == '.mp4'):
             format = "hevc"
         else:
             raise Exception(f"Unknown extension {ext}.")
@@ -281,7 +281,13 @@ def get_timestamps(path_video, ts_format, path_filelists):
     # seperate location from the videos themselves. From 2016 onwards a text
     # file with the timestamps of all frames is stored next to the videos with
     # the same filename (apart from the extension).
-    if ts_format == "2016":
+    if ts_format == "basler":
+        file_type = path_video.split(".")[-1]
+        txt_path = path_video[: -len(file_type)] + "txt"
+        with open(txt_path) as f:
+            fnames = f.read().splitlines()
+        return [parse_image_fname(fn, format="basler")[1].timestamp() for fn in fnames]
+    elif ts_format == "2016":
         assert path_filelists is None
         file_type = path_video.split(".")[-1]
         txt_path = path_video[: -len(file_type)] + "txt"

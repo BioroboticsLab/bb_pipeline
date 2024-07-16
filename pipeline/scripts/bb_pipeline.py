@@ -19,6 +19,14 @@ from bb_binary import Repository, parse_video_fname
 def process_video(args):
     config = get_auto_config()
 
+    # Override config values with command-line arguments if provided
+    if args.decoder_model_path:
+        config['Decoder']['model_path'] = args.decoder_model_path
+    if args.localizer_model_path:
+        config['Localizer']['model_path'] = args.localizer_model_path
+    if args.localizer_attributes_path:
+        config['Localizer']['attributes_path'] = args.localizer_attributes_path    
+
     logger.info(f"Initializing {args.num_threads} pipeline(s)")
     plines = [
         Pipeline([Image, Timestamp], [PipelineResult], **config)
@@ -28,7 +36,10 @@ def process_video(args):
     logger.info(f"Loading bb_binary repository {args.repo_output_path}")
     repo = Repository(args.repo_output_path)
 
-    camId, _, _ = parse_video_fname(args.video_path)
+    # Set default value for video_file_type if it doesn't exist
+    video_file_type = getattr(args, 'video_file_type', 'auto')
+    camId, _, _ = parse_video_fname(args.video_path, format=video_file_type)
+
     logger.info(f"Parsed camId = {camId}")
     gen_processor = GeneratorProcessor(
         plines, lambda: BBBinaryRepoSink(repo, camId=camId), use_tqdm=args.progressbar
