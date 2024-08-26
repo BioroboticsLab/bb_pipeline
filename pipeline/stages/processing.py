@@ -2,7 +2,6 @@ import json
 import numbers
 
 import cv2
-import h5py
 import numpy as np
 import skimage
 import tensorflow as tf
@@ -147,16 +146,15 @@ class Localizer(InitializedPipelineStage):
         BeeTypes,
     ]
 
-    def __init__(self, model_path, thresholds={}):
+    def __init__(self, model_path, attributes_path, thresholds={}):
         super().__init__()
         self.model = load_model(model_path, compile=False)
         self.model.make_predict_function()
 
-        with h5py.File(model_path, "r") as f:
-            self.class_labels = [s.decode() for s in (f["labels"])]
-            self.thresholds = dict(
-                list(zip(self.class_labels, f["default_thresholds"]))
-            )
+        with open(attributes_path, 'r') as f:
+            attributes = json.load(f)
+            self.class_labels = attributes['class_labels']
+            self.thresholds = attributes['thresholds']
 
         if isinstance(thresholds, str):
             thresholds = json.loads(thresholds)
