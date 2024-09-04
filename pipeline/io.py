@@ -273,7 +273,7 @@ def get_seperate_timestamps(path_video, ts_format, path_filelists):
     fnames = image_fnames[
         image_fnames.index(first_fname) : image_fnames.index(second_fname) + 1
     ]
-    return [parse_image_fname(fn, format="beesbook")[1].timestamp() for fn in fnames]
+    return [parse_image_fname(fn, format="auto")[1].timestamp() for fn in fnames]
 
 
 def get_timestamps(path_video, ts_format, path_filelists):
