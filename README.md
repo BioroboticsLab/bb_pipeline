@@ -4,6 +4,24 @@
 
 The beesbook pipeline is used to detect and decode the tags of honeybees.
 
+## Installation
+### Step 1: Install TensorFlow
+• With GPU support (if your system meets the requirements):
+
+``` 
+pip install tensorflow[and-cuda]
+```
+
+• or CPU-only:
+```
+pip install tensorflow
+```
+### Step 2: Install bb_pipeline
+
+```
+pip install git+https://github.com/BioroboticsLab/bb_pipeline.git
+```
+
 ## Usage example
 
 ```python
