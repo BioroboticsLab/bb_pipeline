@@ -9,7 +9,8 @@ from scipy.ndimage import zoom as scipy_zoom
 from skimage.exposure import equalize_hist
 from skimage.feature import peak_local_max
 from skimage.io import imread
-from tensorflow.keras.models import load_model
+import tensorflow as tf
+load_model = tf.keras.models.load_model
 
 from pipeline.objects import (
     BeeLocalizerPositions,
