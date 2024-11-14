@@ -63,15 +63,13 @@ def zoom(image, zoom_factor, gpu=True):
 
     assert image.ndim == 2
 
-    input_shape = (1, image.shape[0], image.shape[1], 1)
     target_shape = np.round(np.array(image.shape) * (zoom_factor))
     target_shape = target_shape.astype(int)
-    img = tf.placeholder(tf.float32, shape=input_shape, name="original_image")
-    img_zoom = tf.image.resize_bicubic(img, target_shape)
 
-    processed = get_tensorflow_session().run(
-        img_zoom[0, :, :, 0], feed_dict={img: image[None, :, :, None]}
-    )
+    img = tf.expand_dims(tf.convert_to_tensor(np.expand_dims(image, axis=-1), dtype=tf.float32), axis=0)
+    img_zoom = tf.image.resize(img, target_shape, method="bicubic")
+
+    processed = img_zoom[0,:,:,0].numpy()  # Convert back to NumPy array
 
     return processed
 
@@ -105,13 +103,20 @@ class LocalizerPreprocessor(InitializedPipelineStage):
         use_clahe=False,
         clahe_clip_limit=2,
         clahe_tile_width=64,
-        clahe_tile_heigth=64,
+        clahe_tile_height=64,
     ):
         super().__init__()
 
+        # ensure correct types (needed if pass in configuration)
+        roi_size = int(roi_size)
+        downsampled_size = int(downsampled_size)
+        clahe_clip_limit = float(clahe_clip_limit)
+        clahe_tile_width = int(clahe_tile_width)
+        clahe_tile_height = int(clahe_tile_height)
+        
         if use_clahe:
             self.clahe = cv2.createCLAHE(
-                clahe_clip_limit, (clahe_tile_width, clahe_tile_heigth)
+                clahe_clip_limit, (clahe_tile_width, clahe_tile_height)
             )
         else:
             self.clahe = None
@@ -225,7 +230,9 @@ class Localizer(InitializedPipelineStage):
         padding=128,
         subpixel_precision=True,
         subpixel_range=3,
+        downscale_factor=1.0,
     ):
+
         positions = skimage.feature.peak_local_max(
             saliency, min_distance=min_distance, threshold_abs=threshold
         )
@@ -246,20 +253,25 @@ class Localizer(InitializedPipelineStage):
                 positions[idx, 0] += subpixel_offsets[idx][0]
                 positions[idx, 1] += subpixel_offsets[idx][1]
 
-        padded_positions = (((positions + 5) * 2 + 1) * 2 + 1) * 2 + 1
+        # Adjust total stride and offset based on downscale_factor
+        adjusted_stride = 8 / downscale_factor
+        adjusted_offset = 47 / downscale_factor
+
+        padded_positions = positions * adjusted_stride + adjusted_offset
 
         predictions_positions = padded_positions - padding
 
         return padded_positions, predictions_positions, positions
 
+
     def process_saliency(
         self,
         saliency,
-        scale_factor,
         pad_size,
         roi_size,
         orig_image,
         threshold,
+        downscale_factor,
         sigma=3 / 4,
     ):
         saliency = saliency[0, :, :]
@@ -268,11 +280,15 @@ class Localizer(InitializedPipelineStage):
             padded_positions,
             positions_img,
             saliency_positions,
-        ) = Localizer.get_predicted_positions(saliency, threshold, padding=pad_size)
+        ) = Localizer.get_predicted_positions(
+            saliency, threshold, padding=pad_size, downscale_factor=downscale_factor
+        )
 
-        rois, mask = self.extract_rois(padded_positions, orig_image, roi_size)
+        # Use positions_img directly without scaling
+        rois, mask = self.extract_rois(positions_img, orig_image, roi_size)
         rois = rois.astype(np.float32) / 255.0
 
+        # Extract saliencies based on the original saliency map positions
         saliencies = self.extract_saliencies(saliency_positions, saliency)
 
         return [rois, saliency, saliencies, positions_img]
@@ -283,7 +299,6 @@ class Localizer(InitializedPipelineStage):
         pad_size = shapes["pad_size"]
 
         downscale_factor = downsampled_size / roi_size
-        scale_factor = roi_size / downsampled_size
 
         if roi_size != downsampled_size:
             image_downsampled = zoom(image, downscale_factor)
@@ -302,11 +317,11 @@ class Localizer(InitializedPipelineStage):
             results = list(
                 self.process_saliency(
                     saliencies[:, :, :, class_idx].copy(),
-                    scale_factor,
                     pad_size,
                     roi_size,
                     orig_image,
                     self.thresholds[class_label],
+                    downscale_factor,
                 )
             )
 
