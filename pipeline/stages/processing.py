@@ -283,9 +283,7 @@ class Localizer(InitializedPipelineStage):
         ) = Localizer.get_predicted_positions(
             saliency, threshold, padding=pad_size, downscale_factor=downscale_factor
         )
-
-        # Use positions_img directly without scaling
-        rois, mask = self.extract_rois(positions_img, orig_image, roi_size)
+        rois, mask = self.extract_rois(padded_positions, orig_image, roi_size)
         rois = rois.astype(np.float32) / 255.0
 
         # Extract saliencies based on the original saliency map positions
