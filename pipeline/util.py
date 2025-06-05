@@ -50,7 +50,7 @@ class TagDecoder:
 
             if len(results[IDs]) > 0:
                 confidences.append(
-                    np.mean(np.product(np.abs(0.5 - results[IDs]) * 2, axis=1))
+                    np.mean(np.prod(np.abs(0.5 - results[IDs]) * 2, axis=1))
                 )
             else:
                 confidences.append(0)
@@ -69,7 +69,7 @@ class TagDecoder:
         )
 
     def get_ids(self, results):
-        confidences = np.product(np.abs(0.5 - results[IDs]) * 2, axis=-1)
+        confidences = np.prod(np.abs(0.5 - results[IDs]) * 2, axis=-1)
         high_conf_indices = np.argwhere(confidences > self.decoder_threshold)
 
         def _get_ferwar_id(idx):
