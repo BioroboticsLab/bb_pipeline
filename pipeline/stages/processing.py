@@ -154,37 +154,18 @@ class Localizer(InitializedPipelineStage):
 
     def __init__(self, model_path, attributes_path, thresholds={}):
         super().__init__()
-        # 1) load old_model
-        old_model = load_model(model_path, compile=False)
-        old_model.make_predict_function()
+        self.model = load_model(model_path, compile=False)
+        self.model.make_predict_function()
 
-        # 2) inspect input_shape
-        in_shape = old_model.input_shape  # e.g. (None,32,32,1)
-
-        if in_shape[1] is not None or in_shape[2] is not None:
-            # rebuild a dynamic-input model
-            cfg = old_model.get_config()
-            for layer in cfg["layers"]:
-                if layer["class_name"] == "InputLayer":
-                    layer["config"]["batch_input_shape"] = (None, None, None, 1)
-                    layer["config"]["dtype"] = "float32"
-                    break
-            new_model = tf.keras.models.Model.from_config(cfg)
-            new_model.set_weights(old_model.get_weights())
-            self.model = new_model
-            self.model.make_predict_function()
-        else:
-            # already dynamic
-            self.model = old_model
-
-        # 3) load the JSON attributes as before
         with open(attributes_path, 'r') as f:
             attributes = json.load(f)
             self.class_labels = attributes['class_labels']
             self.thresholds = attributes['thresholds']
+
         if isinstance(thresholds, str):
             thresholds = json.loads(thresholds)
-        for k in thresholds:
+
+        for k in thresholds.keys():
             self.thresholds[k] = thresholds[k]
 
     @staticmethod
