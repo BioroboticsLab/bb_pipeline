@@ -288,6 +288,9 @@ class Localizer(InitializedPipelineStage):
 
         # Extract saliencies based on the original saliency map positions
         saliencies = self.extract_saliencies(saliency_positions, saliency)
+        # keep only the entries for which an ROI actually exists
+        positions_img  = positions_img[mask]
+        saliencies     = saliencies[mask]        
 
         return [rois, saliency, saliencies, positions_img]
 
