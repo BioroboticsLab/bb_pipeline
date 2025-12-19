@@ -134,11 +134,19 @@ def video_generator(
 
     loaded_frame_count = frame_index + 1
     if loaded_frame_count != len(timestamps):
-        raise RuntimeError(
-            "Number of loaded frames ({}) did not match number of timestamps ({})".format(
-                loaded_frame_count, len(timestamps)
+        # If there are more timestamps than frames, truncate the trailing timestamps and continue.
+        # If there are more frames than timestamps, proceed with available stamps.
+        if loaded_frame_count < len(timestamps):
+            print(
+                f"[warn] frames {loaded_frame_count} < timestamps {len(timestamps)}; truncating extra timestamps at tail"
             )
-        )
+            # Drop trailing stamps so frame/timestamp pairing stays aligned
+            # for any downstream consumers that rely on the generator length.
+            timestamps[:] = timestamps[:loaded_frame_count]
+        else:
+            print(
+                f"[warn] frames {loaded_frame_count} > timestamps {len(timestamps)}; proceeding with available timestamps"
+            )
 
 
 class Sink:
