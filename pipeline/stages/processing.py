@@ -4,11 +4,17 @@ import numbers
 import cv2
 import numpy as np
 import skimage
-import tensorflow as tf
+import torch
+import torch.nn.functional as torch_F
 from scipy.ndimage import zoom as scipy_zoom
+from scipy.spatial import cKDTree
 from skimage.exposure import equalize_hist
 from skimage.feature import peak_local_max
 from skimage.io import imread
+
+# TensorFlow is still required for the Decoder stage (Keras ResNet).
+# TODO: migrate Decoder to PyTorch and remove this import
+#   (see bb_pipeline_models/models/model_generation/pipelinemodels.py → get_custom_resnet).
 import tensorflow as tf
 load_model = tf.keras.models.load_model
 
@@ -34,21 +40,61 @@ from pipeline.objects import (
     TagSaliencies,
     Timestamp,
 )
+from pipeline.stages.localizer_torch import LocalizerEncoder
 from pipeline.stages.stage import PipelineStage
 
 from bb_binary import parse_image_fname
 
+# Configure TF GPU memory growth for the Decoder.
 gpus = tf.config.experimental.list_physical_devices("GPU")
 if gpus:
     try:
-        # Currently, memory growth needs to be the same across GPUs
         for gpu in gpus:
             tf.config.experimental.set_memory_growth(gpu, True)
         logical_gpus = tf.config.experimental.list_logical_devices("GPU")
         print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
     except RuntimeError as e:
-        # Memory growth must be set before GPUs have been initialized
         print(e)
+
+
+def point_nms(positions, confidences, radius, class_names=None, class_agnostic=True):
+    """Distance-based non-maximum suppression for point detections.
+
+    Greedy algorithm: iterate detections from highest to lowest confidence.
+    For each kept detection, suppress all lower-confidence detections within
+    ``radius`` pixels.
+
+    Args:
+        positions:     (N, 2) array of (row, col) coordinates.
+        confidences:   (N,) array of confidence scores.
+        radius:        Suppression radius in pixels.
+        class_names:   (N,) array of class label strings.  Required when
+                       class_agnostic is False.
+        class_agnostic: If True, suppress across all classes.  If False, only
+                       suppress detections of the same class.
+
+    Returns:
+        keep: (N,) boolean mask — True for detections that survive.
+    """
+    n = len(positions)
+    if n == 0:
+        return np.zeros(0, dtype=bool)
+
+    order = np.argsort(-confidences)
+    tree = cKDTree(positions)
+    suppressed = np.zeros(n, dtype=bool)
+
+    for idx in order:
+        if suppressed[idx]:
+            continue
+        neighbors = tree.query_ball_point(positions[idx], r=radius)
+        for nb in neighbors:
+            if nb == idx or suppressed[nb]:
+                continue
+            if class_agnostic or class_names[nb] == class_names[idx]:
+                suppressed[nb] = True
+
+    return ~suppressed
 
 
 def zoom(image, zoom_factor, gpu=True):
@@ -63,15 +109,12 @@ def zoom(image, zoom_factor, gpu=True):
 
     assert image.ndim == 2
 
-    target_shape = np.round(np.array(image.shape) * (zoom_factor))
-    target_shape = target_shape.astype(int)
+    target_shape = np.round(np.array(image.shape) * zoom_factor).astype(int)
 
-    img = tf.expand_dims(tf.convert_to_tensor(np.expand_dims(image, axis=-1), dtype=tf.float32), axis=0)
-    img_zoom = tf.image.resize(img, target_shape, method="bicubic")
+    img_t = torch.from_numpy(image).float().unsqueeze(0).unsqueeze(0)  # (1, 1, H, W)
+    img_zoom = torch_F.interpolate(img_t, size=tuple(target_shape), mode="bicubic", align_corners=False)
 
-    processed = img_zoom[0,:,:,0].numpy()  # Convert back to NumPy array
-
-    return processed
+    return img_zoom[0, 0].numpy()
 
 
 class InitializedPipelineStage(PipelineStage):
@@ -154,8 +197,12 @@ class Localizer(InitializedPipelineStage):
 
     def __init__(self, model_path, attributes_path, thresholds={}):
         super().__init__()
-        self.model = load_model(model_path, compile=False)
-        self.model.make_predict_function()
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model = LocalizerEncoder().to(self.device)
+        self.model.load_state_dict(
+            torch.load(model_path, map_location=self.device, weights_only=True)
+        )
+        self.model.eval()
 
         with open(attributes_path, 'r') as f:
             attributes = json.load(f)
@@ -306,7 +353,12 @@ class Localizer(InitializedPipelineStage):
         else:
             image_downsampled = image.astype(np.float32) / 255
 
-        saliencies = self.model.predict(image_downsampled[None, :, :, None])
+        # PyTorch NCHW inference; transpose output back to NHWC (1, H', W', C)
+        # so that all downstream indexing (saliencies[:, :, :, class_idx]) is unchanged.
+        img_t = torch.from_numpy(image_downsampled).float().unsqueeze(0).unsqueeze(0).to(self.device)
+        with torch.no_grad():
+            out = self.model(img_t)                          # (1, C, H', W')
+        saliencies = out.permute(0, 2, 3, 1).cpu().numpy()  # (1, H', W', C)
 
         bee_regions = []
         bee_saliencies = []

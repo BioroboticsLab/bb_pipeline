@@ -1,4 +1,5 @@
 from pipeline.stages import stage
+from pipeline.stages.polo_localizer import PoloLocalizer
 from pipeline.stages.processing import (
     Decoder,
     ImageReader,
@@ -18,6 +19,7 @@ Stages = (
     ImageReader,
     LocalizerPreprocessor,
     Localizer,
+    PoloLocalizer,
     Decoder,
     ResultMerger,
     LocalizerVisualizer,
