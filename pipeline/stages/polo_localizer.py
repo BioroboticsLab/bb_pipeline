@@ -157,16 +157,16 @@ class PoloLocalizer(InitializedPipelineStage):
 
     def __init__(self, polo_model_path, attributes_path,
                  confidence_threshold=0.5, imgsz=640, nms_radius=0,
-                 polo_class_names=None):
+                 polo_class_names=None, device="auto"):
         super().__init__()
 
-        self.device = torch.device(
-            "cuda" if torch.cuda.is_available() else "cpu"
-        )
+        self.device = self._resolve_device(device)
         self.model = torch.jit.load(
             str(polo_model_path), map_location=self.device
         )
+        self.model = self.model.to(self.device)
         self.model.eval()
+        self._cpu_fallback_triggered = False
 
         self.confidence_threshold = float(confidence_threshold)
         self.imgsz = int(imgsz)
@@ -185,6 +185,27 @@ class PoloLocalizer(InitializedPipelineStage):
         with open(attributes_path, 'r') as f:
             attributes = json.load(f)
             self.class_labels = attributes['class_labels']
+
+    @staticmethod
+    def _resolve_device(device):
+        if isinstance(device, torch.device):
+            return device
+        requested = str(device).strip().lower() if device is not None else "auto"
+        if requested in ("", "auto"):
+            return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if requested.startswith("cuda") and not torch.cuda.is_available():
+            print("[POLO] cuda requested but unavailable; using cpu instead")
+            return torch.device("cpu")
+        return torch.device(requested)
+
+    @staticmethod
+    def _is_cross_device_torchscript_error(exc):
+        msg = str(exc).lower()
+        return (
+            "expected all tensors to be on the same device" in msg
+            and "cuda" in msg
+            and "cpu" in msg
+        )
 
     def call(self, image, orig_image, shapes):
         roi_size = shapes["roi_size"]
@@ -206,7 +227,19 @@ class PoloLocalizer(InitializedPipelineStage):
 
         # --- Forward pass ---
         with torch.no_grad():
-            raw = self.model(img_t)
+            try:
+                raw = self.model(img_t)
+            except RuntimeError as exc:
+                if self.device.type != "cuda" or not self._is_cross_device_torchscript_error(exc):
+                    raise
+
+                if not self._cpu_fallback_triggered:
+                    print("[POLO] TorchScript CUDA/CPU mismatch; retrying on CPU")
+                    self._cpu_fallback_triggered = True
+                self.device = torch.device("cpu")
+                self.model = self.model.to(self.device)
+                img_t = img_t.to(self.device)
+                raw = self.model(img_t)
         # TorchScript output is (pred_tensor, feature_maps); keep only [0].
         pred_tensor = raw[0] if isinstance(raw, (tuple, list)) else raw
 
