@@ -102,7 +102,7 @@ class VideoReader:
 
         self.frames += 1
 
-        image = np.fromstring(raw_image, dtype="uint8")
+        image = np.frombuffer(raw_image, dtype="uint8")
         image = image.reshape((self.h, self.w))
         self.video_pipe.stdout.flush()
         return image
