@@ -439,7 +439,7 @@ class Decoder(InitializedPipelineStage):
         return cropped_rois[:, 0, :, :, None]
 
     def predict(self, regions):
-        predictions = self.model.predict(self.preprocess(regions))
+        predictions = self.model.predict(self.preprocess(regions), verbose=0)
 
         struct = np.empty(len(predictions[0]), dtype=self.types)
         struct["bits"] = np.stack(predictions[:12], -1)[:, 0, :]

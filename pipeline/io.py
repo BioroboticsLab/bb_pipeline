@@ -23,7 +23,7 @@ class VideoReader:
     def __init__(
         self,
         video_path,
-        ffmpeg_stderr_fd=None,
+        ffmpeg_stderr_fd=sp.DEVNULL,
         format="guess_on_ext",
         ffmpeg_bin="ffmpeg",
         ffprobe_bin="ffprobe",
