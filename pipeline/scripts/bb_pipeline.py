@@ -31,8 +31,8 @@ def process_video(args):
         text_root_path (str): Root path for any text-based metadata associated with the video.
 
     Optional Attributes (handled by `getattr`):
-        decoder_model_path (str, optional): Path to the decoder model (e.g., `decoder_2019_keras3.h5`).
-        localizer_model_path (str, optional): Path to the localizer model (e.g., `localizer_2019_keras3.h5`).
+        decoder_model_path (str, optional): Path to the decoder model (e.g., `decoder_2019_weights.pt`).
+        localizer_model_path (str, optional): Path to the localizer model (e.g., `localizer_2019_weights.pt`).
         localizer_attributes_path (str, optional): Path to the localizer attributes JSON file (e.g., `localizer_2019_attributes.json`).
         video_file_type (str, optional): Format type for the video file; defaults to 'auto'.
         progressbar (bool, optional): If `True`, enables a progress bar display for processing.

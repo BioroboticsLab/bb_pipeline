@@ -12,12 +12,6 @@ from skimage.exposure import equalize_hist
 from skimage.feature import peak_local_max
 from skimage.io import imread
 
-# TensorFlow is still required for the Decoder stage (Keras ResNet).
-# TODO: migrate Decoder to PyTorch and remove this import
-#   (see bb_pipeline_models/models/model_generation/pipelinemodels.py → get_custom_resnet).
-import tensorflow as tf
-load_model = tf.keras.models.load_model
-
 from pipeline.objects import (
     BeeLocalizerPositions,
     BeeRegions,
@@ -40,21 +34,11 @@ from pipeline.objects import (
     TagSaliencies,
     Timestamp,
 )
+from pipeline.stages.decoder_torch import DecoderResNet
 from pipeline.stages.localizer_torch import LocalizerEncoder
 from pipeline.stages.stage import PipelineStage
 
 from bb_binary import parse_image_fname
-
-# Configure TF GPU memory growth for the Decoder.
-gpus = tf.config.experimental.list_physical_devices("GPU")
-if gpus:
-    try:
-        for gpu in gpus:
-            tf.config.experimental.set_memory_growth(gpu, True)
-        logical_gpus = tf.config.experimental.list_logical_devices("GPU")
-        print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
-    except RuntimeError as e:
-        print(e)
 
 
 def point_nms(positions, confidences, radius, class_names=None, class_agnostic=True):
@@ -426,10 +410,13 @@ class Decoder(InitializedPipelineStage):
 
     def __init__(self, model_path, use_hist_equalization=True):
         super().__init__()
-        self.model = load_model(model_path, compile=False)
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model = DecoderResNet().to(self.device)
+        self.model.load_state_dict(
+            torch.load(model_path, map_location=self.device, weights_only=True)
+        )
+        self.model.eval()
         self.uses_hist_equalization = use_hist_equalization
-
-        self.model.make_predict_function()
 
     def preprocess(self, regions):
         cropped_rois = regions[:, :, 34:-34, 34:-34]
@@ -439,7 +426,13 @@ class Decoder(InitializedPipelineStage):
         return cropped_rois[:, 0, :, :, None]
 
     def predict(self, regions):
-        predictions = self.model.predict(self.preprocess(regions), verbose=0)
+        preprocessed = self.preprocess(regions)  # (N, 32, 32, 1) NHWC
+        inputs = torch.from_numpy(
+            preprocessed.transpose(0, 3, 1, 2).astype(np.float32)
+        ).to(self.device)
+        with torch.no_grad():
+            outputs = self.model(inputs)
+        predictions = [t.cpu().numpy() for t in outputs]
 
         struct = np.empty(len(predictions[0]), dtype=self.types)
         struct["bits"] = np.stack(predictions[:12], -1)[:, 0, :]
