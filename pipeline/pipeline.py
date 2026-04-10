@@ -222,7 +222,7 @@ def _get_cache_dir(name):
 
 def download_models(config):
     new_config = copy.copy(config)
-    for stage_name in ("Localizer", "Decoder"):
+    for stage_name in ("Localizer", "Decoder", "PoloLocalizer"):
         if stage_name not in config:
             continue
         stage_config = new_config[stage_name]
