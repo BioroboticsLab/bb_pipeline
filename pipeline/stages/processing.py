@@ -201,7 +201,7 @@ class Localizer(InitializedPipelineStage):
 
     @staticmethod
     def extract_saliencies(positions, saliency):
-        saliencies = np.zeros((len(positions), 1))
+        saliencies = np.zeros(len(positions))
         for idx, (r, c) in enumerate(positions):
             saliencies[idx] = saliency[int(np.round(r)), int(np.round(c))]
         return saliencies
