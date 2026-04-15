@@ -10,17 +10,28 @@ Provides the same output contract as the heatmap-based Localizer stage:
   BeeRegions, BeeSaliencies, BeeLocalizerPositions, BeeTypes
 
 Requires only PyTorch at runtime (no ultralytics dependency).
-Export the POLO .pt model to TorchScript first:
+
+Export the POLO .pt model to TorchScript *twice* — once per device — because
+torch.jit.trace bakes the device of in-graph tensor constructors into the
+saved graph, and a CPU-traced graph errors with "tensors on different device"
+when loaded on CUDA:
 
     from ultralytics import YOLO
     import torch
-    model = YOLO("polo26_feedercams.pt")
-    scripted = torch.jit.trace(model.model,
-                               torch.randn(1, 3, 640, 640).to(model.device))
-    torch.jit.save(scripted, "polo26_feedercams.torchscript")
+    for dev in ("cpu", "cuda"):
+        model = YOLO("polo26_feedercams.pt")
+        m = model.model.to(dev).eval()
+        scripted = torch.jit.trace(m, torch.randn(1, 3, 640, 640, device=dev),
+                                   check_trace=False)
+        torch.jit.save(scripted, f"polo26_feedercams_{dev}.torchscript")
+
+PoloLocalizer picks the right variant at load time based on the resolved
+device. Callers pass a base name (with or without _cpu/_cuda suffix and with
+or without .torchscript extension) — see _resolve_torchscript_path.
 """
 
 import json
+import pathlib
 
 import cv2
 import numpy as np
@@ -161,9 +172,9 @@ class PoloLocalizer(InitializedPipelineStage):
         super().__init__()
 
         self.device = self._resolve_device(device)
-        self.model = torch.jit.load(
-            str(polo_model_path), map_location=self.device
-        )
+        resolved_path = self._resolve_torchscript_path(polo_model_path, self.device)
+        print(f"[POLO] device={self.device.type}, loaded {resolved_path}")
+        self.model = torch.jit.load(str(resolved_path), map_location=self.device)
         self.model = self.model.to(self.device)
         self.model.eval()
         self._cpu_fallback_triggered = False
@@ -185,6 +196,39 @@ class PoloLocalizer(InitializedPipelineStage):
         with open(attributes_path, 'r') as f:
             attributes = json.load(f)
             self.class_labels = attributes['class_labels']
+
+    @staticmethod
+    def _resolve_torchscript_path(polo_model_path, device):
+        """Resolve a POLO base path to the device-specific .torchscript file.
+
+        Accepts any of these input forms and always returns the variant that
+        matches ``device``:
+          - ``.../polo26_feedercams``                    (bare base, preferred)
+          - ``.../polo26_feedercams.torchscript``        (legacy, pre-split)
+          - ``.../polo26_feedercams_cpu.torchscript``    (explicit — gets re-resolved)
+          - ``.../polo26_feedercams_cuda.torchscript``   (explicit — gets re-resolved)
+
+        Falls back to the original path (with a warning) if the device-specific
+        file is missing but the original does exist; raises FileNotFoundError
+        if neither exists.
+        """
+        tag = "cuda" if device.type == "cuda" else "cpu"
+        p = pathlib.Path(polo_model_path)
+        stem = p.stem
+        if stem.endswith("_cpu"):
+            stem = stem[:-4]
+        elif stem.endswith("_cuda"):
+            stem = stem[:-5]
+        candidate = p.parent / f"{stem}_{tag}.torchscript"
+        if candidate.exists():
+            return candidate
+        if p.exists():
+            print(f"[POLO] device-specific variant not found at {candidate}; "
+                  f"falling back to {p}")
+            return p
+        raise FileNotFoundError(
+            f"No POLO TorchScript at {candidate} or {p}"
+        )
 
     @staticmethod
     def _resolve_device(device):
